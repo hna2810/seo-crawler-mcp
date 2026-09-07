@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEO Crawler & Mother-Baby Content Classifier Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+    body { font-family: "Inter", sans-serif; }
+    .tab-btn.active { border-color: #2563eb; color: #1d4ed8; background-color: #eff6ff; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-spider text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">SEO Crawler & Content Classifier</h1>
+          <p class="text-xs text-slate-500">Tự động quét website, phát hiện lỗi SEO & phân tích tỷ trọng nội dung Mẹ & Bé</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label for="session-history-select" class="text-xs font-semibold text-slate-500 hidden md:inline"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Lịch sử quét:</label>
+          <select id="session-history-select" onchange="loadSelectedSession(this.value)" class="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 font-medium outline-none max-w-[240px] truncate shadow-sm">
+            <option value="">-- Đang tải các phiên quét... --</option>
+          </select>
+        </div>
+        <span id="global-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span> Sẵn sàng quét
+        </span>
+        <button onclick="toggleSingleToolModal()" class="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-vial"></i> Test 1 từ khóa
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto py-2">
+      <button onclick="switchTab('crawl')" id="tab-crawl-btn" class="tab-btn active px-4 py-2 text-sm font-semibold rounded-lg border-b-2 flex items-center gap-2">
+        <i class="fa-solid fa-play text-blue-600"></i> Quét Website
+      </button>
+      <button onclick="switchTab('structure')" id="tab-structure-btn" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg border-b-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-folder-tree text-indigo-600"></i> Cấu Trúc Website
+        <span id="badge-structure-count" class="hidden text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-full font-bold">0</span>
+      </button>
+      <button onclick="switchTab('topics')" id="tab-topics-btn" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg border-b-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-chart-pie text-emerald-600"></i> Tỷ Trọng Nội Dung Mẹ & Bé
+        <span id="badge-topics-count" class="hidden text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold">0</span>
+      </button>
+      <button onclick="switchTab('audit')" id="tab-audit-btn" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg border-b-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-shield-halved text-rose-600"></i> Báo Cáo Lỗi SEO
+        <span id="badge-audit-count" class="hidden text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-full font-bold">0</span>
+      </button>
+      <button onclick="switchTab('articles')" id="tab-articles-btn" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg border-b-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-list-check text-blue-600"></i> Toàn Bộ URL Đã Phân Tích
+      </button>
+      <button onclick="switchTab('export')" id="tab-export-btn" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg border-b-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-file-arrow-down text-violet-600"></i> Xuất Dữ Liệu (Export Center)
+        <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold">Excel + 5 Báo Cáo</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- TAB 1: CRAWL SETUP & REALTIME MONITOR -->
+    <div id="tab-crawl" class="space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-globe text-blue-600"></i> Thiết Lập Quét Toàn Bộ Website
+          </h2>
+          <span class="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-semibold border border-blue-100">
+            <i class="fa-solid fa-bolt text-amber-500"></i> Turbo Engine (15 kết nối đồng thời)
+          </span>
+        </div>
+
+        <form id="crawl-form" onsubmit="handleStartCrawl(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Website URL (Bắt buộc)</label>
+            <div class="flex gap-2">
+              <input type="url" id="crawl-url" required placeholder="https://homecaresausinh.com" value="https://homecaresausinh.com"
+                class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-medium outline-none shadow-sm">
+              <button type="submit" id="crawl-submit-btn" class="px-7 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-play"></i> Bắt đầu quét
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Chế độ quét (Mode)</label>
+              <select id="crawl-mode" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium outline-none bg-white">
+                <option value="full">Toàn website (Sitemap + Internal Links)</option>
+                <option value="sitemap">Chỉ quét theo XML Sitemap</option>
+                <option value="fast">Quét nhanh (Trang chủ & Menu cấp 1)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Số trang tối đa (Max Pages)</label>
+              <input type="number" id="crawl-max-pages" value="1000" min="10" max="10000" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Số luồng đồng thời (Concurrency)</label>
+              <select id="crawl-concurrency" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium outline-none bg-white">
+                <option value="8" selected>8 kết nối (Tối ưu & Ổn định nhất - Khuyến nghị)</option>
+                <option value="12">12 kết nối (Nhanh)</option>
+                <option value="5">5 kết nối (Thân thiện server)</option>
+                <option value="15">15 kết nối (Tối đa)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Độ sâu tối đa (Max Depth)</label>
+              <input type="number" id="crawl-max-depth" value="5" min="1" max="10" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium outline-none">
+            </div>
+          </div>
+
+          <!-- Quick Presets for Max Pages -->
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <span class="text-xs text-slate-400 font-medium">Chọn nhanh số trang:</span>
+            <button type="button" onclick="setPages(100)" class="px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">100 trang</button>
+            <button type="button" onclick="setPages(500)" class="px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">500 trang</button>
+            <button type="button" onclick="setPages(1000)" class="px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-700 rounded-lg border border-blue-200">1,000 trang (Chuẩn)</button>
+            <button type="button" onclick="setPages(2000)" class="px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">2,000 trang</button>
+            <button type="button" onclick="setPages(5000)" class="px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">5,000 trang</button>
+            <button type="button" onclick="setPages(10000)" class="px-2.5 py-1 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg">10,000 trang (Toàn bộ)</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Realtime Live Monitor Box -->
+      <div id="crawl-live-box" class="hidden bg-white rounded-2xl shadow-sm border border-blue-300 p-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg animate-spin">
+              <i class="fa-solid fa-circle-notch"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900" id="live-status-title">Đang quét website theo thời gian thực...</h3>
+              <p class="text-xs text-slate-500 font-mono" id="live-current-url">Khởi tạo kết nối...</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="handleStopCrawl()" id="crawl-stop-btn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5">
+              <i class="fa-solid fa-hand"></i> Dừng & Phân Tích Ngay
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress Bar & Metrics -->
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs font-semibold text-slate-700">
+            <span id="live-count-text">Đã cào: 0 trang</span>
+            <span id="live-speed-text">Tốc độ: 0 trang/s | Thời gian: 0s</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+            <div id="live-progress-bar" class="bg-gradient-to-r from-blue-600 to-indigo-600 h-3 rounded-full transition-all duration-300" style="width: 5%"></div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-900 rounded-xl text-emerald-400 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap">
+          <span class="text-slate-500 mr-2">&gt;</span> <span id="live-log-line">Đang gửi yêu cầu...</span>
+        </div>
+      </div>
+
+      <!-- Quick Summary Card after crawl -->
+      <div id="crawl-summary-box" class="hidden space-y-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-file-lines"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-medium">Tổng số trang đã cào</p>
+              <h4 id="stat-total-pages" class="text-2xl font-bold text-slate-900">0</h4>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-crown"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-medium">Topic viết nhiều nhất</p>
+              <h4 id="stat-top-topic" class="text-base font-bold text-slate-900 truncate max-w-[150px]">-</h4>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-medium">Lỗi SEO Nghiêm trọng</p>
+              <h4 id="stat-critical-issues" class="text-2xl font-bold text-rose-600">0</h4>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-folder-tree"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-medium">Trang mồ côi (0 Inlinks)</p>
+              <h4 id="stat-orphan-count" class="text-2xl font-bold text-indigo-600">0</h4>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-md flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="text-base font-bold">Quét và phân tích dữ liệu website hoàn tất!</h3>
+            <p class="text-xs text-blue-100 mt-1">Toàn bộ Cấu trúc Website, Tỷ trọng Chủ đề Mẹ & Bé và Lỗi SEO đã được phân tích tự động từ dữ liệu website vừa cào.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="switchTab('topics')" class="px-5 py-2.5 text-xs font-bold bg-white text-blue-700 rounded-xl hover:bg-blue-50 transition-colors shadow-sm flex items-center gap-1.5">
+              <i class="fa-solid fa-chart-pie"></i> Xem Tỷ Trọng Nội Dung Mẹ & Bé
+            </button>
+            <button onclick="switchTab('structure')" class="px-5 py-2.5 text-xs font-bold bg-blue-700 text-white rounded-xl hover:bg-blue-800 transition-colors border border-blue-500 flex items-center gap-1.5">
+              <i class="fa-solid fa-folder-tree"></i> Xem Cấu Trúc Website
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: SITE STRUCTURE (TỰ ĐỘNG PHÂN TÍCH TỪ DỮ LIỆU CÀO) -->
+    <div id="tab-structure" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-folder-tree text-indigo-600"></i> Cấu Trúc Phân Cấp Website (Site Hierarchy)
+            </h2>
+            <p class="text-xs text-slate-500">Tự động dựng cây thư mục, phân tích độ sâu và phát hiện trang mồ côi từ dữ liệu website cào được.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 space-y-3">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-diagram-project"></i> Sơ đồ Cây Phân Cấp Thư Mục URL (Tree Map)
+            </h3>
+            <pre id="structure-ascii-tree" class="bg-slate-900 text-emerald-400 p-4 rounded-xl text-xs overflow-x-auto max-h-[520px] leading-relaxed font-mono border border-slate-800">Chưa có dữ liệu. Vui lòng bấm Quét Website để tự động dựng cây cấu trúc.</pre>
+          </div>
+
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i class="fa-solid fa-unlink text-rose-500"></i> Trang Mồ Côi (Orphan Pages - 0 Inlinks)
+              </h3>
+              <div id="orphan-pages-list" class="space-y-2 max-h-[220px] overflow-y-auto text-xs border border-slate-200 rounded-xl p-3 bg-slate-50">
+                <p class="text-slate-400">Chưa có dữ liệu cào.</p>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i class="fa-solid fa-link text-blue-500"></i> Top Trang Nhận Nhiều Link Nội Bộ Nhất
+              </h3>
+              <div id="top-linked-list" class="space-y-2 max-h-[220px] overflow-y-auto text-xs border border-slate-200 rounded-xl p-3 bg-slate-50">
+                <p class="text-slate-400">Chưa có dữ liệu cào.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: TOPICS & CONTENT RATIO (TỰ ĐỘNG PHÂN TÍCH 12 TOPIC MẸ & BÉ) -->
+    <div id="tab-topics" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-emerald-600"></i> Phân Bổ & Tỷ Trọng Nội Dung Mẹ & Bé (Content Ratio)
+            </h2>
+            <p class="text-xs text-slate-500">Tự động phân nhóm 100% các bài viết cào được vào 12 Topic chính, đo lường tỷ trọng % và phát hiện Content Gaps.</p>
+          </div>
+          <a href="/api/export/topics-csv" download class="px-3.5 py-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 transition-colors flex items-center gap-1.5 shadow-sm">
+            <i class="fa-solid fa-file-excel"></i> Xuất CSV Tỷ Trọng
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col items-center justify-center">
+            <h3 class="text-xs font-bold text-slate-500 uppercase mb-3">Biểu Đồ Tỷ Trọng Topic Chính</h3>
+            <div class="w-64 h-64 relative">
+              <canvas id="topic-donut-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="lg:col-span-2 space-y-4">
+            <h3 class="text-xs font-bold text-slate-500 uppercase">Tỷ trọng chi tiết theo 12 Topic lớn</h3>
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+              <table class="min-w-full text-xs text-left divide-y divide-slate-200">
+                <thead class="bg-slate-50 text-slate-600 font-semibold">
+                  <tr>
+                    <th class="px-3 py-2.5">Topic Chính</th>
+                    <th class="px-3 py-2.5">Số bài cào được</th>
+                    <th class="px-3 py-2.5">Tỷ trọng (%)</th>
+                    <th class="px-3 py-2.5">Subtopic nổi bật nhất</th>
+                  </tr>
+                </thead>
+                <tbody id="topic-ratio-tbody" class="divide-y divide-slate-100 bg-white">
+                  <tr><td colspan="4" class="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu. Vui lòng bấm Quét Website để xem tỷ trọng.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content Gaps & Contexts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+          <div>
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-lightbulb text-amber-500"></i> Gợi Ý Chủ Đề Còn Bỏ Ngỏ (Content Gaps)
+            </h3>
+            <div id="content-gaps-list" class="space-y-2 text-xs max-h-60 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+              <p class="text-slate-400">Chưa có dữ liệu.</p>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <i class="fa-solid fa-compass text-blue-500"></i> Phân Bổ Ý Định Tìm Kiếm (Contexts)
+            </h3>
+            <div id="context-ratio-list" class="space-y-1.5 text-xs max-h-60 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+              <p class="text-slate-400">Chưa có dữ liệu.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SEO AUDIT (TỰ ĐỘNG PHÁT HIỆN TỪ DỮ LIỆU CÀO) -->
+    <div id="tab-audit" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-rose-600"></i> Báo Cáo Lỗi SEO On-page & Kỹ Thuật
+          </h2>
+          <a href="/api/export/issues-csv" download class="px-3.5 py-1.5 text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl border border-rose-200 transition-colors flex items-center gap-1.5 shadow-sm">
+            <i class="fa-solid fa-file-excel"></i> Xuất CSV Báo Cáo Lỗi
+          </a>
+        </div>
+
+        <!-- Issue Category Cards -->
+        <div id="audit-summary-counters" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 font-medium block">404 Not Found</span>
+            <span id="cnt-404" class="text-xl font-bold text-rose-600">0</span>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 font-medium block">Redirect 301/302</span>
+            <span id="cnt-redirects" class="text-xl font-bold text-amber-600">0</span>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 font-medium block">Trùng lặp Title</span>
+            <span id="cnt-dup-title" class="text-xl font-bold text-rose-600">0</span>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 font-medium block">Title > 60 ký tự</span>
+            <span id="cnt-long-title" class="text-xl font-bold text-amber-600">0</span>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 font-medium block">Thiếu thẻ H1</span>
+            <span id="cnt-missing-h1" class="text-xl font-bold text-rose-600">0</span>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+            <span class="text-xs text-slate-500 font-medium block">URL > 60 ký tự</span>
+            <span id="cnt-url-len" class="text-xl font-bold text-amber-600">0</span>
+          </div>
+        </div>
+
+        <!-- Issue Table -->
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-slate-800">Danh sách các URL gặp lỗi</h3>
+          <input type="text" id="audit-filter-input" onkeyup="filterAuditTable()" placeholder="Tìm kiếm URL hoặc lỗi..." class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs outline-none w-64">
+        </div>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full divide-y divide-slate-200 text-left text-xs" id="audit-table">
+            <thead class="bg-slate-50 font-semibold text-slate-600 uppercase tracking-wider">
+              <tr>
+                <th class="px-4 py-3">Mức độ</th>
+                <th class="px-4 py-3">Mã lỗi (Type)</th>
+                <th class="px-4 py-3">URL</th>
+                <th class="px-4 py-3">Mô tả chi tiết</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody" class="divide-y divide-slate-100 bg-white">
+              <tr>
+                <td colspan="4" class="px-4 py-8 text-center text-slate-400">Chưa có dữ liệu. Vui lòng bấm Quét Website để phát hiện lỗi.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: ALL ARTICLES (TOÀN BỘ URL CÀO ĐƯỢC KÈM PHÂN LOẠI ĐA CHIỀU) -->
+    <div id="tab-articles" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-blue-600"></i> Toàn Bộ URL Đã Cào Được & Phân Loại Đa Chiều
+            </h2>
+            <p class="text-xs text-slate-500">Xem chi tiết từng bài viết: Title, Topic chính, Subtopic, Specific Topic, Context, Location và Confidence.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="articles-search" onkeyup="filterArticlesTable()" placeholder="Tìm URL hoặc Tiêu đề..." class="px-3 py-1.5 text-xs border border-slate-300 rounded-lg outline-none w-64">
+            <a href="/api/export/articles-csv" download class="px-3.5 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-xl border border-blue-200 transition-colors flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-file-excel"></i> Xuất CSV Đầy Đủ (24 Cột)
+            </a>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full text-left text-xs divide-y divide-slate-200" id="articles-table">
+            <thead class="bg-slate-50 font-semibold text-slate-600">
+              <tr>
+                <th class="px-3 py-2.5">Tiêu đề / URL</th>
+                <th class="px-3 py-2.5">Độ dài URL</th>
+                <th class="px-3 py-2.5">Ngày Đăng</th>
+                <th class="px-3 py-2.5">Ngày Cập Nhật</th>
+                <th class="px-3 py-2.5">Topic chính</th>
+                <th class="px-3 py-2.5">Subtopic</th>
+                <th class="px-3 py-2.5">Specific Topic</th>
+                <th class="px-3 py-2.5">Context</th>
+                <th class="px-3 py-2.5">Location</th>
+              </tr>
+            </thead>
+            <tbody id="articles-tbody" class="divide-y divide-slate-100 bg-white">
+              <tr><td colspan="9" class="px-3 py-8 text-center text-slate-400">Chưa có bài viết nào được cào.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: EXPORT CENTER (XUẤT TOÀN BỘ DỮ LIỆU ĐÃ CÀO & PHÂN TÍCH) -->
+    <div id="tab-export" class="hidden space-y-6">
+      <!-- Main Action Banner -->
+      <div class="bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-md flex flex-wrap items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">Trung Tâm Xuất Dữ Liệu</span>
+            <span id="export-session-badge" class="text-xs bg-white/10 px-2.5 py-0.5 rounded-md font-mono">Phiên crawl gần nhất</span>
+          </div>
+          <h2 class="text-xl font-bold">Xuất Báo Cáo & Dữ Liệu SEO Toàn Diện</h2>
+          <p class="text-xs text-indigo-100 max-w-2xl">
+            Tải xuống toàn bộ dữ liệu cào và kết quả phân tích theo các định dạng tiêu chuẩn: CSV chuẩn Excel UTF-8 (mở trực tiếp không lỗi font tiếng Việt), Báo cáo Tổng hợp Markdown (.md) và Dữ liệu thô JSON.
+          </p>
+        </div>
+        <div>
+          <button onclick="downloadAllReports()" class="px-6 py-3 bg-white hover:bg-slate-50 text-indigo-700 font-extrabold text-sm rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 transform active:scale-95 cursor-pointer">
+            <i class="fa-solid fa-cloud-arrow-down text-base text-indigo-600"></i> TẢI TRỌN BỘ TẤT CẢ BÁO CÁO (1-CLICK)
+          </button>
+        </div>
+      </div>
+
+      <!-- VIP HERO CARD: BÁO CÁO EXCEL TỔNG HỢP ĐA SHEET CÓ BIỂU ĐỒ NATIVE -->
+      <div class="bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl border-2 border-emerald-500/30 relative overflow-hidden">
+        <!-- Glow effect background -->
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center text-3xl shadow-lg shadow-emerald-500/30">
+                <i class="fa-solid fa-file-excel"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-[11px] font-extrabold uppercase tracking-wider border border-emerald-400/30">
+                    <i class="fa-solid fa-star text-amber-400 mr-1"></i> Báo Cáo Chuyên Sâu Tốt Nhất
+                  </span>
+                  <span class="text-xs text-slate-400 font-mono">Format: .XLSX (Microsoft Excel / Google Sheets)</span>
+                </div>
+                <h3 class="text-xl sm:text-2xl font-black text-white mt-1">
+                  Báo Cáo Tổng Hợp Excel Đa Sheet & Biểu Đồ Trực Quan Native
+                </h3>
+              </div>
+            </div>
+
+            <div>
+              <a href="/api/export/excel" download class="px-7 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-emerald-500/25 transition-all transform active:scale-95 flex items-center gap-2.5 cursor-pointer">
+                <i class="fa-solid fa-file-arrow-down text-lg"></i> TẢI BÁO CÁO EXCEL ĐA SHEET (.XLSX)
+              </a>
+            </div>
+          </div>
+
+          <p class="text-sm text-slate-300 leading-relaxed max-w-4xl">
+            Tự động chia thành <strong class="text-emerald-300">5 Sheet riêng biệt</strong> với đầy đủ màu sắc nhận diện, cố định hàng/cột (Freeze Panes), bật sẵn bộ lọc (AutoFilter) và tích hợp <strong class="text-emerald-300">3 Biểu đồ tương tác Native Excel</strong> (tự động cập nhật khi sửa số liệu, không phải ảnh chụp màn hình).
+          </p>
+
+          <!-- 5 Sheets Breakdown Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2">
+            
+            <!-- Sheet 1 -->
+            <div class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 border border-white/10 backdrop-blur-sm transition-all space-y-2">
+              <div class="flex items-center gap-2 text-blue-400 text-sm font-bold">
+                <i class="fa-solid fa-chart-pie"></i> Sheet 1
+              </div>
+              <h4 class="font-bold text-sm text-white">1. Tổng Quan</h4>
+              <p class="text-xs text-slate-400 leading-snug">
+                KPI Scorecards, Bảng 12 Topic chính & Bảng lỗi SEO. Kèm <strong>2 Biểu đồ Native</strong> (Tròn Doughnut & Cột Column).
+              </p>
+            </div>
+
+            <!-- Sheet 2 -->
+            <div class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 border border-white/10 backdrop-blur-sm transition-all space-y-2">
+              <div class="flex items-center gap-2 text-emerald-400 text-sm font-bold">
+                <i class="fa-solid fa-layer-group"></i> Sheet 2
+              </div>
+              <h4 class="font-bold text-sm text-white">2. Tỷ Trọng Topic</h4>
+              <p class="text-xs text-slate-400 leading-snug">
+                Chi tiết 12 Topic & Subtopic có %, Content Gaps (chủ đề con 0 bài) & <strong>Biểu đồ Thanh Bar Chart</strong> Top 10 Subtopic.
+              </p>
+            </div>
+
+            <!-- Sheet 3 -->
+            <div class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 border border-white/10 backdrop-blur-sm transition-all space-y-2">
+              <div class="flex items-center gap-2 text-rose-400 text-sm font-bold">
+                <i class="fa-solid fa-shield-halved"></i> Sheet 3
+              </div>
+              <h4 class="font-bold text-sm text-white">3. Báo Cáo Lỗi SEO</h4>
+              <p class="text-xs text-slate-400 leading-snug">
+                Toàn bộ lỗi On-page & Kỹ thuật. Phân màu Critical (Đỏ) / Warning (Vàng). Auto-Filter và Freeze Header lọc lỗi tức thì.
+              </p>
+            </div>
+
+            <!-- Sheet 4 -->
+            <div class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 border border-white/10 backdrop-blur-sm transition-all space-y-2">
+              <div class="flex items-center gap-2 text-indigo-400 text-sm font-bold">
+                <i class="fa-solid fa-table-list"></i> Sheet 4
+              </div>
+              <h4 class="font-bold text-sm text-white">4. Toàn Bộ Bài Viết</h4>
+              <p class="text-xs text-slate-400 leading-snug">
+                Bảng 24 cột dữ liệu đa chiều cho 1,000+ URL (Status, Ngày Đăng, Ngày Cập Nhật, Title, H1, Words, Links, Topic, Intent...). Cố định cột URL.
+              </p>
+            </div>
+
+            <!-- Sheet 5 -->
+            <div class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 border border-white/10 backdrop-blur-sm transition-all space-y-2">
+              <div class="flex items-center gap-2 text-purple-400 text-sm font-bold">
+                <i class="fa-solid fa-sitemap"></i> Sheet 5
+              </div>
+              <h4 class="font-bold text-sm text-white">5. Cấu Trúc Website</h4>
+              <p class="text-xs text-slate-400 leading-snug">
+                Danh sách Trang mồ côi (Orphan 0 inlinks) & Bảng xếp hạng Top 25 trang nhận nhiều liên kết nội bộ nhất (Authority Hubs).
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Title for Individual Exports -->
+      <div class="flex items-center justify-between pt-2">
+        <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-folder-open text-slate-400"></i> Các Báo Cáo Thành Phần & Định Dạng Khác
+        </h3>
+        <span class="text-xs text-slate-400">Tải riêng lẻ từng bảng dữ liệu</span>
+      </div>
+
+      <!-- 5 Export Cards Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        
+        <!-- Card 1: Toàn bộ bài viết CSV -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-blue-300 hover:shadow-md transition-all">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-file-excel"></i>
+              </div>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">24 Cột Dữ Liệu</span>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Danh Sách Bài Viết & Phân Loại Mẹ & Bé</h3>
+              <p class="text-xs text-slate-500 mt-1">Đầy đủ URL, Ngày đăng bài, Ngày cập nhật gần nhất, Tiêu đề, H1, Meta Description, Số từ, Internal/External Links, Inlinks, 12 Topic chính, Subtopic, Intent Context, Địa phương Location, Độ tin cậy và Lỗi SEO.</p>
+            </div>
+            <div class="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2.5 space-y-1">
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Định dạng: <strong>CSV (UTF-8 BOM)</strong></div>
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Mở trực tiếp bằng Microsoft Excel không bao giờ lỗi font tiếng Việt.</div>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-slate-100 flex gap-2">
+            <a href="/api/export/articles-csv" download class="flex-1 py-2 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-download"></i> Tải CSV Bài Viết
+            </a>
+          </div>
+        </div>
+
+        <!-- Card 2: Lỗi SEO On-page CSV -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-rose-300 hover:shadow-md transition-all">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">Audit Kỹ Thuật</span>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Báo Cáo Chi Tiết Lỗi SEO On-Page</h3>
+              <p class="text-xs text-slate-500 mt-1">Tổng hợp toàn bộ các link gãy (404/410), Redirect 301/302, Trùng lặp Title/Content, Title dài > 60 ký tự, Thiếu H1, Thin Content (<250 từ) và Trang mồ côi (Orphan).</p>
+            </div>
+            <div class="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2.5 space-y-1">
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Phân loại theo Severity (CRITICAL, WARNING).</div>
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Kèm hướng dẫn khắc phục chi tiết từng URL.</div>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-slate-100 flex gap-2">
+            <a href="/api/export/issues-csv" download class="flex-1 py-2 text-center bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-download"></i> Tải CSV Lỗi SEO
+            </a>
+          </div>
+        </div>
+
+        <!-- Card 3: Tỷ Trọng Topic & Gaps CSV -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-emerald-300 hover:shadow-md transition-all">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-chart-pie"></i>
+              </div>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Taxonomy 12 Chủ Đề</span>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Bảng Tỷ Trọng Topic & Content Gaps</h3>
+              <p class="text-xs text-slate-500 mt-1">Bảng số liệu tỷ trọng % từng Topic lớn và Subtopic, kèm danh mục các chủ đề con bị bỏ ngỏ (0 bài viết) phục vụ xây dựng kế hoạch Topic Cluster & Semantic SEO.</p>
+            </div>
+            <div class="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2.5 space-y-1">
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Chuẩn cấu trúc bảng tính Excel.</div>
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Đã tính sẵn số bài, tỷ lệ % và gợi ý gaps.</div>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-slate-100 flex gap-2">
+            <a href="/api/export/topics-csv" download class="flex-1 py-2 text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-download"></i> Tải CSV Tỷ Trọng
+            </a>
+          </div>
+        </div>
+
+        <!-- Card 4: Báo Cáo Tổng Hợp Markdown -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-indigo-300 hover:shadow-md transition-all">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
+                <i class="fa-brands fa-markdown"></i>
+              </div>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">Tài Liệu Bàn Giao</span>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Báo Cáo Tổng Hợp Toàn Diện (Markdown)</h3>
+              <p class="text-xs text-slate-500 mt-1">Báo cáo hoàn chỉnh chuẩn Markdown bao gồm: Sơ đồ cây thư mục ASCII Tree, Bảng phân tích lỗi, Tỷ trọng nội dung, Phân bổ Intent và Địa phương. Sẵn sàng paste vào Notion, GitHub hoặc gửi đối tác.</p>
+            </div>
+            <div class="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2.5 space-y-1">
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Định dạng Markdown (.md) chuẩn quốc tế.</div>
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Sẵn sàng nạp vào các LLM / AI khác.</div>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-slate-100 flex gap-2">
+            <a href="/api/export/markdown" download class="flex-1 py-2 text-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-download"></i> Tải Markdown (.md)
+            </a>
+            <button onclick="previewMarkdownReport()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer" title="Xem trước báo cáo">
+              <i class="fa-solid fa-eye"></i> Xem trước
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 5: Toàn Bộ Dữ Liệu JSON -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-violet-300 hover:shadow-md transition-all">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-code"></i>
+              </div>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">Dữ Liệu Thô (Raw)</span>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Dữ Liệu Thô Toàn Bộ (Full JSON)</h3>
+              <p class="text-xs text-slate-500 mt-1">Toàn bộ đồ thị liên kết nội bộ Inlinks/Outlinks, độ sâu từng trang, danh sách headings H1-H4, chỉ thị Canonical/Robots và kết quả phân loại chi tiết.</p>
+            </div>
+            <div class="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2.5 space-y-1">
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> JSON có cấu trúc đầy đủ, định dạng đẹp (pretty-printed).</div>
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Thích hợp lưu trữ database hoặc tích hợp API khác.</div>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-slate-100 flex gap-2">
+            <a href="/api/export/json" download class="flex-1 py-2 text-center bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-download"></i> Tải JSON (.json)
+            </a>
+          </div>
+        </div>
+
+        <!-- Card 6: Quick Summary & Info Card -->
+        <div class="bg-slate-900 text-white rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-xs font-mono text-emerald-400 font-bold uppercase">Xuất Dữ Liệu Tức Thì</span>
+            </div>
+            <h3 class="text-base font-bold">Dữ Liệu Được Tự Động Lưu Trữ</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Mọi phiên quét website đều được tự động gắn mã phiên và lưu trữ vào thư mục cache. Bạn có thể quay lại bất cứ lúc nào hoặc bấm nút xuất dữ liệu mà không cần phải quét lại từ đầu.
+            </p>
+            <div class="pt-2 text-xs space-y-1 font-mono text-slate-400 border-t border-slate-800">
+              <div>• Hỗ trợ Excel: <span class="text-emerald-400">Có (UTF-8 BOM)</span></div>
+              <div>• Concurrency: <span class="text-blue-400">15 kết nối Turbo</span></div>
+              <div>• Phân loại: <span class="text-amber-400">12 Topic Mẹ & Bé</span></div>
+            </div>
+          </div>
+          <div class="pt-4">
+            <button onclick="copyMarkdownToClipboard()" id="btn-copy-md" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-copy"></i> Sao chép Báo cáo Markdown
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Preview Section -->
+      <div id="export-preview-box" class="hidden bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-eye text-indigo-600"></i>
+            <h3 class="text-sm font-bold text-slate-900">Xem Trước Báo Cáo Markdown Hoàn Chỉnh</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="copyMarkdownToClipboard()" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-copy"></i> Copy Toàn Bộ
+            </button>
+            <button onclick="document.getElementById('export-preview-box').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        <pre id="export-preview-content" class="p-4 bg-slate-900 text-slate-200 rounded-xl font-mono text-xs max-h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed border border-slate-800"></pre>
+      </div>
+
+    </div>
+
+    <!-- MODAL TEST 1 TỪ KHÓA ĐƠN LẺ (DÀNH CHO TEST NHANH, KHÔNG ẢNH HƯỞNG GIAO DIỆN CHÍNH) -->
+    <div id="single-tool-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-vial text-indigo-600"></i> Thử Nghiệm Phân Loại 1 Câu / Từ Khóa
+          </h3>
+          <button onclick="toggleSingleToolModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="space-y-3">
+          <input type="text" id="single-input-title" value="Dịch vụ tắm bé tại nhà Hà Nội giá bao nhiêu?" placeholder="Nhập tiêu đề hoặc câu hỏi..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium outline-none">
+          <button onclick="handleSingleClassify()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl transition-all">Phân tích tức thì</button>
+          <div id="single-result-box" class="hidden p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
+            <div><strong>Topic:</strong> <span id="s-topic" class="text-blue-600 font-bold"></span></div>
+            <div><strong>Subtopic:</strong> <span id="s-subtopic" class="font-semibold"></span></div>
+            <div><strong>Specific:</strong> <span id="s-spec" class="text-indigo-600 font-semibold"></span></div>
+            <div><strong>Context:</strong> <span id="s-ctx"></span> | <strong>Location:</strong> <span id="s-loc"></span></div>
+            <div><strong>Độ tin cậy:</strong> <span id="s-conf" class="text-emerald-600 font-bold"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let currentSessionData = null;
+    let donutChartInstance = null;
+    let eventSource = null;
+
+    function switchTab(tabId) {
+      const tabs = ["crawl", "structure", "topics", "audit", "articles", "export"];
+      tabs.forEach(t => {
+        const el = document.getElementById("tab-" + t);
+        const btn = document.getElementById("tab-" + t + "-btn");
+        if (el) el.classList.add("hidden");
+        if (btn) {
+          btn.classList.remove("active", "border-blue-600", "text-blue-700", "bg-blue-50");
+          btn.classList.add("text-slate-600");
+        }
+      });
+
+      const targetEl = document.getElementById("tab-" + tabId);
+      const targetBtn = document.getElementById("tab-" + tabId + "-btn");
+      if (targetEl) targetEl.classList.remove("hidden");
+      if (targetBtn) {
+        targetBtn.classList.add("active", "border-blue-600", "text-blue-700", "bg-blue-50");
+        targetBtn.classList.remove("text-slate-600");
+      }
+    }
+
+    function setPages(n) {
+      document.getElementById("crawl-max-pages").value = n;
+    }
+
+    function toggleSingleToolModal() {
+      const modal = document.getElementById("single-tool-modal");
+      modal.classList.toggle("hidden");
+    }
+
+    async function handleSingleClassify() {
+      const title = document.getElementById("single-input-title").value.trim();
+      if (!title) return;
+      try {
+        const res = await fetch("/api/classify-single", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title })
+        });
+        const d = await res.json();
+        document.getElementById("single-result-box").classList.remove("hidden");
+        document.getElementById("s-topic").innerText = d.topic;
+        document.getElementById("s-subtopic").innerText = d.subtopic;
+        document.getElementById("s-spec").innerText = d.specificTopic || "(Không có)";
+        document.getElementById("s-ctx").innerText = d.context || "(Chung)";
+        document.getElementById("s-loc").innerText = d.location || "(Toàn quốc)";
+        document.getElementById("s-conf").innerText = `${(d.confidence * 100).toFixed(0)}%`;
+      } catch (err) {
+        alert("Lỗi: " + err.message);
+      }
+    }
+
+    let crawlPollInterval = null;
+
+    function connectSSE() {
+      if (eventSource) {
+        try { eventSource.close(); } catch {}
+      }
+      try {
+        eventSource = new EventSource("/api/crawl/stream");
+        eventSource.onmessage = (e) => {
+          try {
+            const p = JSON.parse(e.data);
+            updateLiveProgress(p);
+          } catch {}
+        };
+        eventSource.onerror = () => {
+          // SSE connection dropped, polling fallback will handle updates
+        };
+      } catch (err) {
+        console.warn("EventSource error, relying on poll:", err);
+      }
+
+      // Start guaranteed fallback polling interval every 1000ms
+      if (crawlPollInterval) clearInterval(crawlPollInterval);
+      crawlPollInterval = setInterval(async () => {
+        try {
+          const res = await fetch("/api/crawl/status");
+          if (res.ok) {
+            const p = await res.json();
+            updateLiveProgress(p);
+            if (p.status === "completed" || p.status === "stopped") {
+              clearInterval(crawlPollInterval);
+              crawlPollInterval = null;
+              if (!currentSessionData) {
+                const sRes = await fetch("/api/session/latest");
+                if (sRes.ok) {
+                  const sData = await sRes.json();
+                  if (sData && sData.totalPages > 0) {
+                    currentSessionData = sData;
+                    renderAllAnalysis(sData);
+                    switchTab("topics");
+                  }
+                }
+              }
+            }
+          }
+        } catch {}
+      }, 1000);
+    }
+
+    function updateLiveProgress(p) {
+      if (!p) return;
+      const countEl = document.getElementById("live-count-text");
+      const speedEl = document.getElementById("live-speed-text");
+      const barEl = document.getElementById("live-progress-bar");
+      const urlEl = document.getElementById("live-current-url");
+      const logEl = document.getElementById("live-log-line");
+      const badge = document.getElementById("global-status-badge");
+
+      if (p.status === "running") {
+        document.getElementById("crawl-live-box").classList.remove("hidden");
+        badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Đang cào dữ liệu...`;
+
+        const total = Math.max(p.totalQueued, p.crawledCount, 1);
+        const percent = Math.min(100, Math.max(5, Math.round((p.crawledCount / total) * 100)));
+        barEl.style.width = percent + "%";
+        countEl.innerText = `Đã cào: ${p.crawledCount} / ${total} trang (${percent}%)`;
+        speedEl.innerText = `Tốc độ: ${p.speedPagesPerSec} trang/s | Thời gian: ${p.elapsedSec}s`;
+        urlEl.innerText = p.currentUrl;
+        logEl.innerText = `[${p.statusCode}] ${p.currentUrl}`;
+      } else if (p.status === "completed" || p.status === "stopped") {
+        badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Đã hoàn tất`;
+        barEl.style.width = "100%";
+        countEl.innerText = `Đã cào: ${p.crawledCount} / ${p.crawledCount} trang (100%)`;
+        speedEl.innerText = `Tốc độ: ${p.speedPagesPerSec} trang/s | Thời gian: ${p.elapsedSec}s`;
+        if (p.status === "stopped") {
+          logEl.innerText = "Đã dừng cào theo yêu cầu của bạn!";
+        } else {
+          logEl.innerText = "Hoàn tất quét & phân tích website!";
+        }
+      }
+    }
+
+    async function handleStopCrawl() {
+      document.getElementById("crawl-stop-btn").disabled = true;
+      document.getElementById("live-status-title").innerText = "Đang dừng và tổng hợp dữ liệu cào...";
+      try {
+        await fetch("/api/crawl/stop", { method: "POST" });
+        setTimeout(async () => {
+          try {
+            const sRes = await fetch("/api/session/latest");
+            if (sRes.ok) {
+              const sData = await sRes.json();
+              if (sData && sData.totalPages > 0) {
+                currentSessionData = sData;
+                renderAllAnalysis(sData);
+                switchTab("topics");
+              }
+            }
+          } catch {}
+        }, 1000);
+      } catch (err) {
+        console.error("Stop error:", err);
+      }
+    }
+
+    async function handleStartCrawl(e) {
+      e.preventDefault();
+      const url = document.getElementById("crawl-url").value.trim();
+      const mode = document.getElementById("crawl-mode").value;
+      const maxPages = document.getElementById("crawl-max-pages").value;
+      const concurrency = document.getElementById("crawl-concurrency").value;
+      const maxDepth = document.getElementById("crawl-max-depth").value;
+
+      document.getElementById("crawl-live-box").classList.remove("hidden");
+      document.getElementById("crawl-summary-box").classList.add("hidden");
+      document.getElementById("crawl-submit-btn").disabled = true;
+      document.getElementById("crawl-stop-btn").disabled = false;
+      document.getElementById("live-status-title").innerText = "Đang quét website theo thời gian thực...";
+
+      currentSessionData = null;
+      connectSSE();
+
+      try {
+        const res = await fetch("/api/crawl", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url,
+            mode,
+            maxPages: Number(maxPages),
+            concurrency: Number(concurrency),
+            maxDepth: Number(maxDepth),
+            delayMs: 0
+          })
+        });
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        currentSessionData = data;
+        renderAllAnalysis(data);
+        loadSessionsList();
+
+        // TỰ ĐỘNG CHUYỂN NGAY SANG TAB TỶ TRỌNG NỘI DUNG ĐỂ NGƯỜI DÙNG XEM
+        switchTab("topics");
+      } catch (err) {
+        // If stopped by user, do not alert as an error
+        console.warn("Crawl ended or stopped:", err);
+      } finally {
+        if (crawlPollInterval) {
+          clearInterval(crawlPollInterval);
+          crawlPollInterval = null;
+        }
+        if (eventSource) {
+          try { eventSource.close(); } catch {}
+          eventSource = null;
+        }
+        document.getElementById("crawl-live-box").classList.add("hidden");
+        document.getElementById("crawl-submit-btn").disabled = false;
+      }
+    }
+
+    function renderAllAnalysis(data) {
+      document.getElementById("crawl-summary-box").classList.remove("hidden");
+      document.getElementById("stat-total-pages").innerText = data.totalPages;
+      document.getElementById("stat-critical-issues").innerText = data.audit.criticalCount;
+      document.getElementById("stat-orphan-count").innerText = data.structure.orphanPages.length;
+      document.getElementById("stat-top-topic").innerText = data.contentRatio.topTopic ? data.contentRatio.topTopic.topic : "N/A";
+
+      const expBadge = document.getElementById("export-session-badge");
+      if (expBadge && data.sessionId) {
+        expBadge.innerText = `Phiên: ${data.sessionId} (${data.totalPages} URL)`;
+      }
+
+      // Badges
+      const bStruct = document.getElementById("badge-structure-count");
+      bStruct.innerText = data.totalPages;
+      bStruct.classList.remove("hidden");
+
+      const bTopics = document.getElementById("badge-topics-count");
+      bTopics.innerText = `${data.contentRatio.topicDistributions.length} Topics`;
+      bTopics.classList.remove("hidden");
+
+      const bAudit = document.getElementById("badge-audit-count");
+      bAudit.innerText = data.audit.totalIssues;
+      bAudit.classList.remove("hidden");
+
+      // 1. Audit Table & Counters
+      document.getElementById("cnt-404").innerText = data.audit.summary.statusCode404;
+      document.getElementById("cnt-redirects").innerText = data.audit.summary.redirects;
+      document.getElementById("cnt-dup-title").innerText = data.audit.summary.duplicateTitle;
+      document.getElementById("cnt-long-title").innerText = data.audit.summary.titleTooLong;
+      document.getElementById("cnt-missing-h1").innerText = data.audit.summary.missingH1;
+      document.getElementById("cnt-url-len").innerText = data.audit.summary.urlTooLong || 0;
+
+      const auditTbody = document.getElementById("audit-tbody");
+      const allIssues = [
+        ...data.audit.issuesByCategory.status,
+        ...data.audit.issuesByCategory.meta,
+        ...data.audit.issuesByCategory.content,
+        ...data.audit.issuesByCategory.indexing,
+        ...data.audit.issuesByCategory.links
+      ];
+
+      if (allIssues.length === 0) {
+        auditTbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-emerald-600 font-semibold">Tuyệt vời! Không phát hiện lỗi SEO nghiêm trọng nào trên toàn bộ trang cào được.</td></tr>`;
+      } else {
+        auditTbody.innerHTML = allIssues.map(i => {
+          const sevBadge = i.severity === "critical" ?
+            `<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[10px]">CRITICAL</span>` :
+            `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">WARNING</span>`;
+          return `
+            <tr>
+              <td class="px-4 py-2.5 whitespace-nowrap">${sevBadge}</td>
+              <td class="px-4 py-2.5 font-mono text-[11px] font-semibold text-slate-700">${i.type}</td>
+              <td class="px-4 py-2.5 max-w-xs truncate"><a href="${i.url}" target="_blank" class="text-blue-600 hover:underline">${i.url}</a></td>
+              <td class="px-4 py-2.5 text-slate-600">${i.message}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      // 2. Site Structure
+      document.getElementById("structure-ascii-tree").innerText = data.structure.asciiTree;
+      const orphanBox = document.getElementById("orphan-pages-list");
+      if (data.structure.orphanPages.length > 0) {
+        orphanBox.innerHTML = data.structure.orphanPages.map(p => `
+          <div class="p-2 bg-rose-50 border border-rose-100 rounded-lg">
+            <a href="${p.url}" target="_blank" class="font-medium text-rose-700 hover:underline truncate block">${p.title || p.url}</a>
+            <span class="text-[10px] text-slate-500">Độ sâu: ${p.depth}</span>
+          </div>
+        `).join("");
+      } else {
+        orphanBox.innerHTML = `<p class="text-emerald-600 font-medium">Không có trang mồ côi nào (Tất cả URL đều có internal links).</p>`;
+      }
+
+      const topLinkedBox = document.getElementById("top-linked-list");
+      topLinkedBox.innerHTML = data.structure.topLinkedPages.map(p => `
+        <div class="p-2 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+          <a href="${p.url}" target="_blank" class="font-medium text-slate-700 hover:underline truncate max-w-[200px]">${p.title || p.url}</a>
+          <span class="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold rounded text-[11px]">${p.inlinkCount} inlinks</span>
+        </div>
+      `).join("");
+
+      // 3. Topics & Content Ratio
+      const topicTbody = document.getElementById("topic-ratio-tbody");
+      topicTbody.innerHTML = data.contentRatio.topicDistributions.map(t => {
+        const topSub = t.subtopics.length > 0 ? `${t.subtopics[0].subtopic} (${t.subtopics[0].count} bài)` : "-";
+        return `
+          <tr>
+            <td class="px-3 py-2 font-bold text-slate-800">${t.topic}</td>
+            <td class="px-3 py-2 font-semibold">${t.count} bài</td>
+            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold">${t.ratio}%</span></td>
+            <td class="px-3 py-2 text-slate-600">${topSub}</td>
+          </tr>
+        `;
+      }).join("");
+
+      renderTopicChart(data.contentRatio.topicDistributions);
+
+      // Content Gaps
+      const gapsBox = document.getElementById("content-gaps-list");
+      if (data.contentRatio.contentGaps.length > 0) {
+        gapsBox.innerHTML = data.contentRatio.contentGaps.slice(0, 8).map(g => `
+          <div class="p-2.5 bg-amber-50/60 border border-amber-200/80 rounded-xl">
+            <span class="font-bold text-amber-900">${g.topic}</span>
+            <p class="text-slate-600 mt-1">Chưa có bài: <span class="text-slate-800 italic">${g.subtopicsWithZeroArticles.slice(0, 3).join(", ")}...</span></p>
+          </div>
+        `).join("");
+      } else {
+        gapsBox.innerHTML = `<p class="text-emerald-600">Độ phủ nội dung rất tốt!</p>`;
+      }
+
+      // Contexts
+      const ctxBox = document.getElementById("context-ratio-list");
+      ctxBox.innerHTML = data.contentRatio.contextBreakdown.map(c => `
+        <div class="flex items-center justify-between p-1.5 border-b border-slate-100">
+          <span class="font-medium text-slate-700">${c.context}</span>
+          <span class="font-bold text-slate-900">${c.count} bài (${c.ratio}%)</span>
+        </div>
+      `).join("");
+
+      // 4. All Articles Table
+      const artTbody = document.getElementById("articles-tbody");
+      artTbody.innerHTML = data.classifications.map(a => {
+        const urlLen = a.url.length;
+        const isTooLong = urlLen > 60;
+        const urlBadge = isTooLong
+          ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">${urlLen} kt (Dài)</span>`
+          : `<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">${urlLen} kt</span>`;
+        return `
+        <tr>
+          <td class="px-3 py-2 max-w-xs truncate">
+            <a href="${a.url}" target="_blank" class="font-medium text-blue-600 hover:underline block truncate">${a.title || a.url}</a>
+            <span class="text-[10px] text-slate-400 truncate block">${a.url}</span>
+          </td>
+          <td class="px-3 py-2 whitespace-nowrap">${urlBadge}</td>
+          <td class="px-3 py-2 text-slate-600 whitespace-nowrap text-[11px]">${a.publishedTime || "-"}</td>
+          <td class="px-3 py-2 text-slate-600 whitespace-nowrap text-[11px]">${a.modifiedTime || "-"}</td>
+          <td class="px-3 py-2 font-semibold text-slate-800">${a.topic}</td>
+          <td class="px-3 py-2 text-slate-600">${a.subtopic}</td>
+          <td class="px-3 py-2 text-indigo-600 font-medium">${a.specificTopic || "-"}</td>
+          <td class="px-3 py-2"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">${a.context || "-"}</span></td>
+          <td class="px-3 py-2"><span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">${a.location || "-"}</span></td>
+        </tr>
+      `;
+      }).join("");
+    }
+
+    function renderTopicChart(dist) {
+      const ctx = document.getElementById("topic-donut-chart").getContext("2d");
+      if (donutChartInstance) {
+        donutChartInstance.destroy();
+      }
+
+      const labels = dist.map(d => d.topic);
+      const values = dist.map(d => d.count);
+      const colors = [
+        "#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4",
+        "#6366f1", "#14b8a6", "#f97316", "#84cc16", "#e11d48", "#64748b"
+      ];
+
+      donutChartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            backgroundColor: colors.slice(0, labels.length)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    function filterAuditTable() {
+      const query = document.getElementById("audit-filter-input").value.toLowerCase();
+      const rows = document.querySelectorAll("#audit-tbody tr");
+      rows.forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(query) ? "" : "none";
+      });
+    }
+
+    function filterArticlesTable() {
+      const query = document.getElementById("articles-search").value.toLowerCase();
+      const rows = document.querySelectorAll("#articles-tbody tr");
+      rows.forEach(r => {
+        r.style.display = r.innerText.toLowerCase().includes(query) ? "" : "none";
+      });
+    }
+
+    function downloadAllReports() {
+      const urls = [
+        "/api/export/excel",
+        "/api/export/articles-csv",
+        "/api/export/issues-csv",
+        "/api/export/topics-csv",
+        "/api/export/markdown",
+        "/api/export/json"
+      ];
+      urls.forEach((u, idx) => {
+        setTimeout(() => {
+          const a = document.createElement("a");
+          a.href = u;
+          a.setAttribute("download", "");
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }, idx * 400);
+      });
+    }
+
+    async function previewMarkdownReport() {
+      try {
+        const res = await fetch("/api/export/markdown?inline=1");
+        if (!res.ok) throw new Error("Chưa có báo cáo để xem trước. Vui lòng quét website trước.");
+        const text = await res.text();
+        document.getElementById("export-preview-content").innerText = text;
+        const box = document.getElementById("export-preview-box");
+        box.classList.remove("hidden");
+        box.scrollIntoView({ behavior: "smooth" });
+      } catch (err) {
+        alert("Lỗi xem trước: " + err.message);
+      }
+    }
+
+    async function copyMarkdownToClipboard() {
+      try {
+        const res = await fetch("/api/export/markdown?inline=1");
+        if (!res.ok) throw new Error("Chưa có báo cáo để sao chép. Vui lòng quét website trước.");
+        const text = await res.text();
+        await navigator.clipboard.writeText(text);
+        const btn = document.getElementById("btn-copy-md");
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Đã sao chép vào Clipboard!`;
+        setTimeout(() => { btn.innerHTML = originalText; }, 2500);
+      } catch (err) {
+        alert("Không thể sao chép: " + err.message);
+      }
+    }
+
+    async function loadSessionsList() {
+      try {
+        const res = await fetch("/api/sessions");
+        if (res.ok) {
+          const sessions = await res.json();
+          const select = document.getElementById("session-history-select");
+          if (!select) return;
+          if (!sessions || sessions.length === 0) {
+            select.innerHTML = '<option value="">Chưa có phiên quét nào</option>';
+            return;
+          }
+          select.innerHTML = sessions.map((s, idx) => {
+            const time = new Date(s.startTime).toLocaleDateString("vi-VN") + " " + new Date(s.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+            const host = (s.rootUrl || "").replace(/^https?:\/\//, "");
+            const isLatest = idx === 0 ? " (Mới nhất)" : "";
+            const isSelected = currentSessionData && currentSessionData.sessionId === s.id ? "selected" : (idx === 0 ? "selected" : "");
+            return `<option value="${s.id}" ${isSelected}>${host} - ${s.totalPagesCrawled} trang - ${time}${isLatest}</option>`;
+          }).join("");
+        }
+      } catch (e) {
+        console.warn("Could not load sessions list:", e);
+      }
+    }
+
+    async function loadSelectedSession(sessionId) {
+      if (!sessionId) return;
+      try {
+        const res = await fetch(`/api/session/${sessionId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.totalPages > 0) {
+            currentSessionData = data;
+            renderAllAnalysis(data);
+          }
+        }
+      } catch (err) {
+        alert("Không thể tải phiên quét: " + err.message);
+      }
+    }
+
+    // Auto-load latest session on page load
+    window.addEventListener("DOMContentLoaded", async () => {
+      loadSessionsList();
+      try {
+        const res = await fetch("/api/session/latest");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.totalPages > 0) {
+            currentSessionData = data;
+            renderAllAnalysis(data);
+          }
+        }
+      } catch (err) {}
+    });
+  </script>
+</body>
+</html>

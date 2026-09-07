@@ -1,0 +1,32 @@
+{
+  "name": "seo-crawler-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for Website SEO Crawling, SEO Audit, Site Architecture Analysis, and Mother & Baby Content Classification",
+  "main": "dist/index.js",
+  "bin": {
+    "seo-crawler-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "npx ts-node test/test-all.ts",
+    "ui": "node dist/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "axios": "^1.7.9",
+    "chartsheet": "^0.3.1",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "fast-xml-parser": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.17.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}
