@@ -179,6 +179,64 @@ function generateTopicsCSV(session, contentRatio) {
     }
     return "\uFEFF" + rows.join("\r\n");
 }
+function buildSafePageLookup(session) {
+    const pageLookup = new Map();
+    const getLookupKeys = (urlStr) => {
+        const keys = [urlStr];
+        try {
+            const u = new URL(urlStr);
+            const cleanP = u.origin + u.pathname.replace(/\/+$/, "");
+            keys.push(cleanP, cleanP + "/");
+        }
+        catch { }
+        return keys;
+    };
+    // 1. Prioritize real 200 OK homepage for root keys so it is NEVER overwritten by redirect/error pages
+    const rootKeys = getLookupKeys(session.rootUrl);
+    const rootPage = Object.values(session.pages).find(p => {
+        try {
+            const u = new URL(p.url);
+            return (u.pathname === "" || u.pathname === "/") && p.statusCode === 200;
+        }
+        catch {
+            return false;
+        }
+    }) || Object.values(session.pages).find(p => {
+        try {
+            const u = new URL(p.url);
+            return u.pathname === "" || u.pathname === "/";
+        }
+        catch {
+            return false;
+        }
+    });
+    if (rootPage) {
+        for (const k of rootKeys) {
+            pageLookup.set(k, rootPage);
+        }
+    }
+    // 2. Add pages by original url (do not overwrite a 200 OK page with an error/soft-404 page)
+    for (const page of Object.values(session.pages)) {
+        for (const k of getLookupKeys(page.url)) {
+            if (!pageLookup.has(k) || (page.statusCode === 200 && pageLookup.get(k)?.statusCode !== 200)) {
+                pageLookup.set(k, page);
+            }
+        }
+    }
+    // 3. For finalUrl, only map if key is not already present, and NEVER overwrite the root homepage
+    for (const page of Object.values(session.pages)) {
+        if (page.finalUrl) {
+            for (const k of getLookupKeys(page.finalUrl)) {
+                if (rootKeys.includes(k))
+                    continue;
+                if (!pageLookup.has(k)) {
+                    pageLookup.set(k, page);
+                }
+            }
+        }
+    }
+    return pageLookup;
+}
 function generateInternalLinksCSV(session) {
     const headers = [
         "STT",
@@ -191,11 +249,7 @@ function generateInternalLinksCSV(session) {
         "Loại link"
     ];
     const rows = [headers.map(escapeCSV).join(",")];
-    const pageLookup = new Map();
-    for (const page of Object.values(session.pages)) {
-        pageLookup.set(page.url, page);
-        pageLookup.set(page.finalUrl, page);
-    }
+    const pageLookup = buildSafePageLookup(session);
     let index = 1;
     for (const page of Object.values(session.pages)) {
         if (page.isArticle === false || page.url === session.rootUrl || (0, extractor_1.isNonArticleUrlOrTitle)(page.url, page.finalUrl, page.title))
@@ -207,18 +261,25 @@ function generateInternalLinksCSV(session) {
                 continue;
             const anchor = (outlink.anchorText || "").trim();
             const lowerAnchor = anchor.toLowerCase();
-            // Exclude breadcrumb links
+            // Exclude breadcrumb links by anchor text (DOM breadcrumbs already stripped)
             if (lowerAnchor === "trang chủ" ||
                 lowerAnchor === "trang chu" ||
                 lowerAnchor === "home" ||
                 lowerAnchor === "tin tức" ||
                 lowerAnchor === "tin tuc" ||
                 lowerAnchor === "chia sẻ & tư vấn" ||
-                lowerAnchor === "chia se & tu van" ||
-                outlink.toUrl === session.rootUrl) {
+                lowerAnchor === "chia se & tu van") {
                 continue;
             }
-            const destPage = pageLookup.get(outlink.toUrl);
+            let destPage = pageLookup.get(outlink.toUrl);
+            if (!destPage) {
+                try {
+                    const u = new URL(outlink.toUrl);
+                    const cleanP = u.origin + u.pathname.replace(/\/+$/, "");
+                    destPage = pageLookup.get(cleanP) || pageLookup.get(cleanP + "/");
+                }
+                catch { }
+            }
             rows.push([
                 index++,
                 page.url,
@@ -874,18 +935,7 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
         c.border = thinBorder;
     });
     // Map for destination URL lookup
-    const pageLookup = new Map();
-    for (const page of Object.values(session.pages)) {
-        pageLookup.set(page.url, page);
-        pageLookup.set(page.finalUrl, page);
-        try {
-            const u = new URL(page.url);
-            const cleanP = u.origin + u.pathname.replace(/\/+$/, "");
-            pageLookup.set(cleanP, page);
-            pageLookup.set(cleanP + "/", page);
-        }
-        catch { }
-    }
+    const pageLookup = buildSafePageLookup(session);
     const internalLinksList = [];
     const anchorCountMap = {};
     for (const page of Object.values(session.pages)) {
@@ -899,15 +949,14 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
                 continue;
             const anchor = (outlink.anchorText || "").trim() || "(Không có anchor text)";
             const lowerAnchor = anchor.toLowerCase();
-            // Exclude breadcrumb links
+            // Exclude breadcrumb links by anchor text (DOM breadcrumbs already stripped)
             if (lowerAnchor === "trang chủ" ||
                 lowerAnchor === "trang chu" ||
                 lowerAnchor === "home" ||
                 lowerAnchor === "tin tức" ||
                 lowerAnchor === "tin tuc" ||
                 lowerAnchor === "chia sẻ & tư vấn" ||
-                lowerAnchor === "chia se & tu van" ||
-                outlink.toUrl === session.rootUrl) {
+                lowerAnchor === "chia se & tu van") {
                 continue;
             }
             let destPage = pageLookup.get(outlink.toUrl);

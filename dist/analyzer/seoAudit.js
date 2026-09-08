@@ -97,7 +97,16 @@ function performSEOAudit(pages) {
             });
         }
         // --- Status checks ---
-        if (page.statusCode === 404 || page.isSoft404) {
+        const isRootUrl = (() => {
+            try {
+                const u = new URL(page.url);
+                return u.pathname === "" || u.pathname === "/";
+            }
+            catch {
+                return false;
+            }
+        })();
+        if (!isRootUrl && (page.statusCode === 404 || page.isSoft404)) {
             count404++;
             issues.push({
                 url: page.url,
@@ -338,16 +347,30 @@ function performSEOAudit(pages) {
     // 4. Broken Link Checks
     for (const page of pageList) {
         for (const out of page.outlinks) {
-            if (!out.isExternal && pages[out.toUrl]) {
-                const targetPage = pages[out.toUrl];
+            if (out.isExternal)
+                continue;
+            // Never consider intentional links pointing directly to the root homepage as broken
+            try {
+                const u = new URL(out.toUrl);
+                if (u.pathname === "" || u.pathname === "/") {
+                    continue;
+                }
+            }
+            catch { }
+            const targetPage = pages[out.toUrl] ||
+                (out.toUrl.endsWith("/") ? pages[out.toUrl.slice(0, -1)] : pages[out.toUrl + "/"]);
+            if (targetPage) {
                 if (targetPage.statusCode === 404 || targetPage.statusCode === 410 || targetPage.isSoft404) {
+                    const isSoft = Boolean(targetPage.isSoft404);
                     issues.push({
                         url: page.url,
                         category: "links",
                         severity: "critical",
                         type: "BROKEN_INTERNAL_LINK",
-                        message: `Liên kết nội bộ hỏng trỏ đến trang ${targetPage.statusCode || 404}: ${out.toUrl} (Anchor: "${out.anchorText}")`,
-                        details: { brokenTarget: out.toUrl, statusCode: targetPage.statusCode, anchorText: out.anchorText }
+                        message: isSoft
+                            ? `Liên kết nội bộ trỏ đến trang đã xóa bị chuyển hướng về trang chủ (Soft 404): ${out.toUrl} (Anchor: "${out.anchorText}")`
+                            : `Liên kết nội bộ hỏng trỏ đến trang ${targetPage.statusCode || 404}: ${out.toUrl} (Anchor: "${out.anchorText}")`,
+                        details: { brokenTarget: out.toUrl, statusCode: targetPage.statusCode, anchorText: out.anchorText, isSoft404: isSoft }
                     });
                 }
             }

@@ -538,6 +538,117 @@ assert(
   `Total internal links should be exactly 1, got ${parsedPostData.totalInternalLinks}`
 );
 
+// --- 12. Testing In-Content Brand Link to Homepage vs True Soft 404 ---
+console.log(`\n--- 12. Testing In-Content Brand Link to Homepage vs Soft 404 ---`);
+
+const articleWithBrandLinkHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Địa chỉ massage body bầu cho cơ thể nhẹ bẫng</title>
+</head>
+<body>
+  <div class="zek_breadcrum">
+    <a href="https://homecaresausinh.com/">Trang chủ</a> / <span>Dịch vụ bầu</span>
+  </div>
+  <main class="post-content">
+    <h1>Địa chỉ massage body bầu cho cơ thể nhẹ bẫng</h1>
+    <p>Thấu hiểu được điều này, <a href="https://homecaresausinh.com/">Home Care</a> đem đến dịch vụ tận tâm.</p>
+    <p>Mẹ có thể tham khảo thêm sản phẩm <a href="https://homecaresausinh.com/san-pham-da-xoa">tinh dầu dừa</a> đã xóa.</p>
+  </main>
+</body>
+</html>
+`;
+
+const parsedBrandData = extractPageData(
+  articleWithBrandLinkHtml,
+  "https://homecaresausinh.com/dia-chi-massage-body-bau",
+  "https://homecaresausinh.com/dia-chi-massage-body-bau",
+  200,
+  "text/html",
+  50,
+  1,
+  "homecaresausinh.com"
+);
+
+assert(
+  parsedBrandData.outlinks.some((l: any) => l.toUrl === "https://homecaresausinh.com/" && l.anchorText === "Home Care"),
+  "Outlinks MUST contain legitimate in-content brand link to homepage"
+);
+assert(
+  !parsedBrandData.outlinks.some((l: any) => l.anchorText.toLowerCase() === "trang chủ"),
+  "Outlinks must NOT contain breadcrumb 'Trang chủ'"
+);
+
+// Mock a crawl session with:
+// 1. Homepage (200 OK)
+// 2. The article
+// 3. A dead product that redirected to homepage (Soft 404)
+const mockSession: any = {
+  id: "test-session-brand",
+  rootUrl: "https://homecaresausinh.com",
+  startTime: new Date().toISOString(),
+  pages: {
+    "https://homecaresausinh.com/": {
+      url: "https://homecaresausinh.com/",
+      finalUrl: "https://homecaresausinh.com/",
+      statusCode: 200,
+      title: "Home Care - Dịch Vụ Chăm Sóc Mẹ & Bé Sau Sinh",
+      isArticle: false,
+      outlinks: []
+    },
+    "https://homecaresausinh.com/dia-chi-massage-body-bau": parsedBrandData,
+    "https://homecaresausinh.com/san-pham-da-xoa": {
+      url: "https://homecaresausinh.com/san-pham-da-xoa",
+      finalUrl: "https://homecaresausinh.com/",
+      statusCode: 404,
+      isSoft404: true,
+      title: "Home Care - Dịch Vụ Chăm Sóc Mẹ & Bé Sau Sinh",
+      isArticle: false,
+      outlinks: []
+    }
+  }
+};
+
+const csvOutput = generateInternalLinksCSV(mockSession);
+assert(
+  csvOutput.includes("Home Care"),
+  "CSV MUST contain in-content brand link 'Home Care' pointing to homepage"
+);
+assert(
+  csvOutput.includes("https://homecaresausinh.com/dia-chi-massage-body-bau"),
+  "CSV MUST contain source article URL"
+);
+assert(
+  !csvOutput.includes("Trang chủ"),
+  "CSV must NOT contain breadcrumb link 'Trang chủ'"
+);
+
+const auditReport12 = performSEOAudit(mockSession.pages);
+const allIssues12 = [
+  ...auditReport12.issuesByCategory.status,
+  ...auditReport12.issuesByCategory.links,
+  ...auditReport12.issuesByCategory.meta,
+  ...auditReport12.issuesByCategory.content,
+  ...auditReport12.issuesByCategory.indexing
+];
+
+const brandLinkBrokenIssue = allIssues12.find(
+  (i: any) => i.type === "BROKEN_INTERNAL_LINK" && i.details?.brokenTarget === "https://homecaresausinh.com/"
+);
+assert(
+  !brandLinkBrokenIssue,
+  "Direct link to root homepage 'Home Care' MUST NOT be flagged as BROKEN_INTERNAL_LINK"
+);
+
+const soft404BrokenIssue = allIssues12.find(
+  (i: any) => i.type === "BROKEN_INTERNAL_LINK" && i.details?.brokenTarget === "https://homecaresausinh.com/san-pham-da-xoa"
+);
+assert(
+  Boolean(soft404BrokenIssue),
+  "Link to deleted product redirecting to homepage MUST be flagged as BROKEN_INTERNAL_LINK (Soft 404)"
+);
+
 console.log(`\n=========================================`);
 console.log(`TESTS FINISHED: ${passed}/${total} PASSED`);
 console.log(`=========================================`);
