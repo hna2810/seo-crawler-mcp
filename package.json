@@ -2,7 +2,7 @@
   "name": "seo-crawler-mcp",
   "version": "1.0.0",
   "description": "MCP Server for Website SEO Crawling, SEO Audit, Site Architecture Analysis, and Mother & Baby Content Classification",
-  "main": "dist/index.js",
+  "main": "dist/server.js",
   "bin": {
     "seo-crawler-mcp": "./dist/index.js"
   },
