@@ -72,7 +72,34 @@ export function extractPageData(
     }
   });
 
-  // 4. Content extraction for Word Count & Semantic Classification
+  // 4. Discovery Links (Trích xuất toàn bộ liên kết trên toàn trang bao gồm menu, header, footer để crawler duyệt web)
+  const discoveryLinks: string[] = [];
+  $("a[href]").each((_, el) => {
+    const rawHref = $(el).attr("href")?.trim();
+    if (!rawHref) return;
+
+    if (
+      rawHref.startsWith("#") ||
+      rawHref.startsWith("javascript:") ||
+      rawHref.startsWith("mailto:") ||
+      rawHref.startsWith("tel:")
+    ) {
+      return;
+    }
+
+    try {
+      const resolved = new URL(rawHref, finalUrl);
+      if (resolved.protocol === "http:" || resolved.protocol === "https:") {
+        resolved.hash = "";
+        const uStr = resolved.toString();
+        if (!discoveryLinks.includes(uStr)) {
+          discoveryLinks.push(uStr);
+        }
+      }
+    } catch {}
+  });
+
+  // 5. Content extraction for Word Count & Semantic Classification
   // Remove boilerplate: script, style, nav, footer, header, aside, form, svg, noscript, etc.
   const clone$ = cheerio.load(html);
   clone$(
@@ -91,7 +118,7 @@ export function extractPageData(
   const cleanMainText = cleanText($articleContainer.text());
   const wordCount = countWords(cleanMainText);
 
-  // 5. In-Content Links & Anchor text (CHỈ tính trong phần nội dung bài viết, KHÔNG tính header/footer)
+  // 6. In-Content Links & Anchor text (CHỈ tính trong phần nội dung bài viết, KHÔNG tính header/footer)
   const outlinks: Outlink[] = [];
   let totalInternalLinks = 0;
   let totalExternalLinks = 0;
@@ -146,7 +173,7 @@ export function extractPageData(
     if (
       p === "/" ||
       p === "" ||
-      /\/(gio-hang|cart|checkout|thanh-toan|tai-khoan|my-account|lien-he|contact|showroom|cua-hang|shop|sitemap.*|tim-kiem|search|login|dang-nhap|wp-.*|\.xml|\.html?)$/i.test(p) ||
+      /\/(gio-hang|cart|checkout|thanh-toan|tai-khoan|my-account|lien-he|contact|showroom|cua-hang|shop|sitemap.*|tim-kiem|search|login|dang-nhap|wp-.*|\.xml)$/i.test(p) ||
       /(\/category\/|\/tag\/|\/author\/|\/page\/|\/collections\/)/i.test(p)
     ) {
       isArticle = false;
@@ -231,6 +258,7 @@ export function extractPageData(
     totalExternalLinks,
     inlinks: [],
     outlinks,
+    discoveryLinks,
     mainContentText: cleanMainText
   };
 }

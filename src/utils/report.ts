@@ -196,6 +196,49 @@ export function generateTopicsCSV(
   return "\uFEFF" + rows.join("\r\n");
 }
 
+export function generateInternalLinksCSV(session: CrawlSession): string {
+  const headers = [
+    "STT",
+    "URL bài viết nguồn",
+    "Title bài viết nguồn",
+    "Anchor Text",
+    "URL đích",
+    "Title URL đích",
+    "Status",
+    "Loại link"
+  ];
+  const rows: string[] = [headers.map(escapeCSV).join(",")];
+
+  const pageLookup = new Map<string, any>();
+  for (const page of Object.values(session.pages)) {
+    pageLookup.set(page.url, page);
+    pageLookup.set(page.finalUrl, page);
+  }
+
+  let index = 1;
+  for (const page of Object.values(session.pages)) {
+    if (page.isArticle === false || page.url === session.rootUrl) continue;
+    if (!page.outlinks || page.outlinks.length === 0) continue;
+
+    for (const outlink of page.outlinks) {
+      if (outlink.isExternal) continue;
+      const destPage = pageLookup.get(outlink.toUrl);
+      rows.push([
+        index++,
+        page.url,
+        page.title || page.url,
+        outlink.anchorText || "-",
+        outlink.toUrl,
+        destPage ? destPage.title : "-",
+        destPage ? destPage.statusCode : 200,
+        "Internal"
+      ].map(escapeCSV).join(","));
+    }
+  }
+
+  return "\uFEFF" + rows.join("\r\n");
+}
+
 export function generateMarkdownReport(
   session: CrawlSession,
   audit: SEOAuditReport,
@@ -886,27 +929,210 @@ export async function generateComprehensiveExcelWorkbook(
   ws4.getColumn(24).width = 35;
 
   // ----------------------------------------------------
-  // SHEET 5: 5. Cấu Trúc Website (Hierarchy & Inlinks)
+  // SHEET 5: 5. Liên Kết Nội Bộ (Internal Links Audit)
   // ----------------------------------------------------
-  const ws5 = wb.addWorksheet("5. Cấu Trúc Website", {
+  const ws5 = wb.addWorksheet("5. Liên Kết Nội Bộ", {
+    properties: { tabColor: { argb: "FFF59E0B" } },
+    views: [{ showGridLines: true, state: "frozen", ySplit: 2 }]
+  });
+
+  ws5.mergeCells("A1:H1");
+  const s5Title = ws5.getCell("A1");
+  s5Title.value = "DANH SÁCH LIÊN KẾT NỘI BỘ (INTERNAL LINKS) TỪ BÀI VIẾT & THỐNG KÊ ANCHOR TEXT";
+  s5Title.font = { name: "Segoe UI", size: 13, bold: true, color: { argb: "FFFFFFFF" } };
+  s5Title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFB45309" } };
+  s5Title.alignment = { vertical: "middle", horizontal: "center" };
+  ws5.getRow(1).height = 32;
+
+  // Table 1 Headers
+  const s5Headers = [
+    "STT",
+    "URL bài viết nguồn",
+    "Title bài viết nguồn",
+    "Anchor Text",
+    "URL đích",
+    "Title URL đích",
+    "Status",
+    "Loại link"
+  ];
+  const s5HRow = ws5.getRow(2);
+  s5HRow.height = 24;
+  s5Headers.forEach((h, idx) => {
+    const c = s5HRow.getCell(idx + 1);
+    c.value = h;
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+    c.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FF78350F" } };
+    c.alignment = { vertical: "middle", horizontal: idx === 0 || idx >= 6 ? "center" : "left" };
+    c.border = thinBorder;
+  });
+
+  // Map for destination URL lookup
+  const pageLookup = new Map<string, any>();
+  for (const page of Object.values(session.pages)) {
+    pageLookup.set(page.url, page);
+    pageLookup.set(page.finalUrl, page);
+    try {
+      const u = new URL(page.url);
+      const cleanP = u.origin + u.pathname.replace(/\/+$/, "");
+      pageLookup.set(cleanP, page);
+      pageLookup.set(cleanP + "/", page);
+    } catch {}
+  }
+
+  // Collect internal in-content links from articles only
+  interface ArticleInternalLink {
+    sourceUrl: string;
+    sourceTitle: string;
+    anchorText: string;
+    targetUrl: string;
+    targetTitle: string;
+    statusCode: number;
+    linkType: string;
+  }
+
+  const internalLinksList: ArticleInternalLink[] = [];
+  const anchorCountMap: Record<string, number> = {};
+
+  for (const page of Object.values(session.pages)) {
+    // Only articles (exclude utility pages and root homepage)
+    if (page.isArticle === false || page.url === session.rootUrl) continue;
+    if (!page.outlinks || page.outlinks.length === 0) continue;
+
+    for (const outlink of page.outlinks) {
+      if (outlink.isExternal) continue;
+
+      const anchor = (outlink.anchorText || "").trim() || "(Không có anchor text)";
+      let destPage = pageLookup.get(outlink.toUrl);
+      if (!destPage) {
+        try {
+          const u = new URL(outlink.toUrl);
+          const cleanP = u.origin + u.pathname.replace(/\/+$/, "");
+          destPage = pageLookup.get(cleanP) || pageLookup.get(cleanP + "/");
+        } catch {}
+      }
+
+      const targetTitle = destPage?.title || "-";
+      const statusCode = destPage?.statusCode || 200;
+
+      internalLinksList.push({
+        sourceUrl: page.url,
+        sourceTitle: page.title || page.url,
+        anchorText: anchor,
+        targetUrl: outlink.toUrl,
+        targetTitle,
+        statusCode,
+        linkType: "Internal"
+      });
+
+      anchorCountMap[anchor] = (anchorCountMap[anchor] || 0) + 1;
+    }
+  }
+
+  let s5RowIdx = 3;
+  internalLinksList.forEach((link, idx) => {
+    const r = ws5.getRow(s5RowIdx++);
+    r.height = 20;
+    r.values = [
+      idx + 1,
+      link.sourceUrl,
+      link.sourceTitle,
+      link.anchorText,
+      link.targetUrl,
+      link.targetTitle,
+      link.statusCode,
+      link.linkType
+    ];
+    r.eachCell(c => {
+      c.font = { name: "Segoe UI", size: 9 };
+      c.border = thinBorder;
+      if (idx % 2 === 1) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDFBF7" } };
+    });
+    r.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+    r.getCell(7).alignment = { vertical: "middle", horizontal: "center" };
+    r.getCell(8).alignment = { vertical: "middle", horizontal: "center" };
+    if (link.statusCode >= 400) {
+      r.getCell(7).font = { name: "Segoe UI", size: 9, bold: true, color: { argb: RED } };
+    } else if (link.statusCode >= 300) {
+      r.getCell(7).font = { name: "Segoe UI", size: 9, bold: true, color: { argb: AMBER } };
+    }
+  });
+
+  const table1EndRow = s5RowIdx;
+
+  // Table 2: Anchor text statistics
+  const t2TitleRow = table1EndRow + 2;
+  ws5.getCell(`A${t2TitleRow}`).value = "Thống kê Anchor Text toàn website";
+  ws5.getCell(`A${t2TitleRow}`).font = { name: "Segoe UI", size: 11, bold: true, color: { argb: NAVY } };
+
+  ws5.getCell(`A${t2TitleRow + 1}`).value = "--> Mục đích: biết anchor text nào được sử dụng nhiều nhất trên toàn bộ website.";
+  ws5.getCell(`A${t2TitleRow + 1}`).font = { name: "Segoe UI", size: 9, italic: true, color: { argb: "FF475569" } };
+
+  const t2HeaderRow = t2TitleRow + 2;
+  ws5.getRow(t2HeaderRow).height = 22;
+  ["Anchor Text", "Số lần sử dụng", "Tỷ lệ"].forEach((h, idx) => {
+    const c = ws5.getCell(t2HeaderRow, idx + 1);
+    c.value = h;
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+    c.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FF78350F" } };
+    c.alignment = { vertical: "middle", horizontal: idx === 0 ? "left" : "right" };
+    c.border = thinBorder;
+  });
+
+  const totalInternalLinks = internalLinksList.length;
+  const sortedAnchors = Object.entries(anchorCountMap).sort((a, b) => b[1] - a[1]);
+
+  let t2DataRow = t2HeaderRow + 1;
+  sortedAnchors.forEach(([anchor, count], idx) => {
+    const r = ws5.getRow(t2DataRow++);
+    r.height = 19;
+    const ratio = totalInternalLinks > 0 ? count / totalInternalLinks : 0;
+    r.getCell(1).value = anchor;
+    r.getCell(2).value = count;
+    r.getCell(3).value = ratio;
+
+    [r.getCell(1), r.getCell(2), r.getCell(3)].forEach(c => {
+      c.font = { name: "Segoe UI", size: 9 };
+      c.border = thinBorder;
+      if (idx % 2 === 1) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDFBF7" } };
+    });
+    r.getCell(2).alignment = { vertical: "middle", horizontal: "right" };
+    r.getCell(2).numFmt = "#,##0";
+    r.getCell(3).alignment = { vertical: "middle", horizontal: "right" };
+    r.getCell(3).numFmt = "0.00%";
+  });
+
+  ws5.autoFilter = "A2:H2";
+  ws5.getColumn(1).width = 28;
+  ws5.getColumn(2).width = 45;
+  ws5.getColumn(3).width = 35;
+  ws5.getColumn(4).width = 28;
+  ws5.getColumn(5).width = 45;
+  ws5.getColumn(6).width = 35;
+  ws5.getColumn(7).width = 12;
+  ws5.getColumn(8).width = 14;
+
+  // ----------------------------------------------------
+  // SHEET 6: 6. Cấu Trúc Website (Hierarchy & Inlinks)
+  // ----------------------------------------------------
+  const ws6 = wb.addWorksheet("6. Cấu Trúc Website", {
     properties: { tabColor: { argb: PURPLE } },
     views: [{ showGridLines: true }]
   });
 
-  ws5.mergeCells("A1:F1");
-  const s5Title = ws5.getCell("A1");
-  s5Title.value = "PHÂN TÍCH CẤU TRÚC PHÂN CẤP THƯ MỤC WEBSITE & ĐỒ THỊ LIÊN KẾT (SITE HIERARCHY)";
-  s5Title.font = { name: "Segoe UI", size: 13, bold: true, color: { argb: "FFFFFFFF" } };
-  s5Title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF5B21B6" } };
-  s5Title.alignment = { vertical: "middle", horizontal: "center" };
-  ws5.getRow(1).height = 32;
+  ws6.mergeCells("A1:F1");
+  const s6Title = ws6.getCell("A1");
+  s6Title.value = "PHÂN TÍCH CẤU TRÚC PHÂN CẤP THƯ MỤC WEBSITE & ĐỒ THỊ LIÊN KẾT (SITE HIERARCHY)";
+  s6Title.font = { name: "Segoe UI", size: 13, bold: true, color: { argb: "FFFFFFFF" } };
+  s6Title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF5B21B6" } };
+  s6Title.alignment = { vertical: "middle", horizontal: "center" };
+  ws6.getRow(1).height = 32;
 
   // Section 1: Site Hierarchy Tree Diagram Table
-  ws5.getCell("A3").value = "1. SƠ ĐỒ CẤU TRÚC PHÂN CẤP THƯ MỤC (SITE HIERARCHY TREE)";
-  ws5.getCell("A3").font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: "FF5B21B6" } };
+  ws6.getCell("A3").value = "1. SƠ ĐỒ CẤU TRÚC PHÂN CẤP THƯ MỤC (SITE HIERARCHY TREE)";
+  ws6.getCell("A3").font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: "FF5B21B6" } };
 
-  const s5TreeHRow = ws5.getRow(4);
-  s5TreeHRow.height = 24;
+  const s6TreeHRow = ws6.getRow(4);
+  s6TreeHRow.height = 24;
   [
     "Cấp Độ (Depth)",
     "Sơ Đồ Phân Cấp Thư Mục / Cấu Trúc Cây (Site Tree)",
@@ -915,7 +1141,7 @@ export async function generateComprehensiveExcelWorkbook(
     "Tỷ Trọng (%)",
     "Tiêu Đề Trang Đại Diện"
   ].forEach((h, idx) => {
-    const c = s5TreeHRow.getCell(idx + 1);
+    const c = s6TreeHRow.getCell(idx + 1);
     c.value = h;
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF6D28D9" } };
     c.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FFFFFFFF" } };
@@ -924,9 +1150,9 @@ export async function generateComprehensiveExcelWorkbook(
   });
 
   const flatTree = flattenSiteTreeForReport(structure.tree, totalPages);
-  let s5RowIdx = 5;
+  let s6RowIdx = 5;
   flatTree.forEach((node, idx) => {
-    const r = ws5.getRow(s5RowIdx++);
+    const r = ws6.getRow(s6RowIdx++);
     r.height = 20;
     r.values = [
       node.depth === 0 ? "Gốc (Level 0)" : `Cấp ${node.depth}`,
@@ -956,22 +1182,22 @@ export async function generateComprehensiveExcelWorkbook(
     r.getCell(5).numFmt = "0.0%";
   });
 
-  const treeEndRow = s5RowIdx;
+  const treeEndRow = s6RowIdx;
 
   // Section 2: URL Depth Distribution
   const depthStartRow = treeEndRow + 2;
-  ws5.getCell(`A${depthStartRow}`).value = "2. PHÂN BỐ ĐỘ SÂU URL (DEPTH DISTRIBUTION)";
-  ws5.getCell(`A${depthStartRow}`).font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: BLUE } };
+  ws6.getCell(`A${depthStartRow}`).value = "2. PHÂN BỐ ĐỘ SÂU URL (DEPTH DISTRIBUTION)";
+  ws6.getCell(`A${depthStartRow}`).font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: BLUE } };
 
-  const s5DepthHRow = ws5.getRow(depthStartRow + 1);
-  s5DepthHRow.height = 22;
+  const s6DepthHRow = ws6.getRow(depthStartRow + 1);
+  s6DepthHRow.height = 22;
   [
     "Độ Sâu (Depth Level)",
     "Số Lượng URL",
     "Tỷ Trọng (%)",
     "Đánh Giá Cấu Trúc SEO"
   ].forEach((h, idx) => {
-    const c = s5DepthHRow.getCell(idx + 1);
+    const c = s6DepthHRow.getCell(idx + 1);
     c.value = h;
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
     c.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FFFFFFFF" } };
@@ -985,7 +1211,7 @@ export async function generateComprehensiveExcelWorkbook(
     const count = structure.depthDistribution[depth] || 0;
     const ratio = totalPages > 0 ? count / totalPages : 0;
     const evalText = depth <= 3 ? "Tốt (Thuận lợi cho bot Google cào và index)" : "Cảnh báo (URL quá sâu > 3 cấp, bot khó tìm)";
-    const r = ws5.getRow(curDepthRow++);
+    const r = ws6.getRow(curDepthRow++);
     r.height = 19;
     r.values = [
       depth === 0 ? "Cấp 0 (Trang chủ)" : `Cấp độ ${depth}`,
@@ -1013,13 +1239,13 @@ export async function generateComprehensiveExcelWorkbook(
 
   // Section 3: Orphan pages
   const orphanStartRow = depthEndRow + 2;
-  ws5.getCell(`A${orphanStartRow}`).value = `3. DANH SÁCH TRANG MỒ CÔI (ORPHAN PAGES - 0 INLINKS): ${structure.orphanPages.length} TRANG`;
-  ws5.getCell(`A${orphanStartRow}`).font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: RED } };
+  ws6.getCell(`A${orphanStartRow}`).value = `3. DANH SÁCH TRANG MỒ CÔI (ORPHAN PAGES - 0 INLINKS): ${structure.orphanPages.length} TRANG`;
+  ws6.getCell(`A${orphanStartRow}`).font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: RED } };
 
-  const s5H1Row = ws5.getRow(orphanStartRow + 1);
-  s5H1Row.height = 22;
+  const s6H1Row = ws6.getRow(orphanStartRow + 1);
+  s6H1Row.height = 22;
   ["STT", "URL Trang Mồ Côi", "Tiêu Đề Trang", "Độ Sâu (Depth)"].forEach((h, idx) => {
-    const c = s5H1Row.getCell(idx + 1);
+    const c = s6H1Row.getCell(idx + 1);
     c.value = h;
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF991B1B" } };
     c.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FFFFFFFF" } };
@@ -1027,9 +1253,9 @@ export async function generateComprehensiveExcelWorkbook(
     c.border = thinBorder;
   });
 
-  const s5OrphanStart = orphanStartRow + 2;
+  const s6OrphanStart = orphanStartRow + 2;
   structure.orphanPages.forEach((p, idx) => {
-    const row = ws5.getRow(s5OrphanStart + idx);
+    const row = ws6.getRow(s6OrphanStart + idx);
     row.height = 19;
     row.values = [idx + 1, p.url, p.title || p.url, p.depth];
     row.eachCell(c => {
@@ -1041,17 +1267,17 @@ export async function generateComprehensiveExcelWorkbook(
     row.getCell(4).alignment = { vertical: "middle", horizontal: "center" };
   });
 
-  const orphanEndRow = s5OrphanStart + structure.orphanPages.length;
+  const orphanEndRow = s6OrphanStart + structure.orphanPages.length;
 
   // Section 4: Top linked pages
   const topLinkStart = orphanEndRow + 2;
-  ws5.getCell(`A${topLinkStart}`).value = "4. TOP 25 TRANG NHẬN NHIỀU LIÊN KẾT NỘI BỘ NHẤT (AUTHORITY HUBS)";
-  ws5.getCell(`A${topLinkStart}`).font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: BLUE } };
+  ws6.getCell(`A${topLinkStart}`).value = "4. TOP 25 TRANG NHẬN NHIỀU LIÊN KẾT NỘI BỘ NHẤT (AUTHORITY HUBS)";
+  ws6.getCell(`A${topLinkStart}`).font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: BLUE } };
 
-  const s5H2Row = ws5.getRow(topLinkStart + 1);
-  s5H2Row.height = 22;
+  const s6H2Row = ws6.getRow(topLinkStart + 1);
+  s6H2Row.height = 22;
   ["Thứ Hạng", "URL Nhận Link", "Tiêu Đề Trang", "Số Inlinks Nhận Được"].forEach((h, idx) => {
-    const c = s5H2Row.getCell(idx + 1);
+    const c = s6H2Row.getCell(idx + 1);
     c.value = h;
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
     c.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FFFFFFFF" } };
@@ -1061,7 +1287,7 @@ export async function generateComprehensiveExcelWorkbook(
 
   const topLinkedRow = topLinkStart + 2;
   structure.topLinkedPages.slice(0, 25).forEach((p, idx) => {
-    const row = ws5.getRow(topLinkedRow + idx);
+    const row = ws6.getRow(topLinkedRow + idx);
     row.height = 19;
     row.values = [idx + 1, p.url, p.title || p.url, p.inlinkCount];
     row.eachCell(c => {
@@ -1073,12 +1299,12 @@ export async function generateComprehensiveExcelWorkbook(
     row.getCell(4).alignment = { vertical: "middle", horizontal: "right" };
   });
 
-  ws5.getColumn(1).width = 16;
-  ws5.getColumn(2).width = 48;
-  ws5.getColumn(3).width = 35;
-  ws5.getColumn(4).width = 22;
-  ws5.getColumn(5).width = 16;
-  ws5.getColumn(6).width = 40;
+  ws6.getColumn(1).width = 16;
+  ws6.getColumn(2).width = 48;
+  ws6.getColumn(3).width = 35;
+  ws6.getColumn(4).width = 22;
+  ws6.getColumn(5).width = 16;
+  ws6.getColumn(6).width = 40;
 
   // Write base ExcelJS buffer
   let rawBuf: any = await wb.xlsx.writeBuffer();

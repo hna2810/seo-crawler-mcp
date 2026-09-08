@@ -506,11 +506,11 @@
           </div>
 
           <p class="text-sm text-slate-300 leading-relaxed max-w-4xl">
-            Tự động chia thành <strong class="text-emerald-300">5 Sheet riêng biệt</strong> với đầy đủ màu sắc nhận diện, cố định hàng/cột (Freeze Panes), bật sẵn bộ lọc (AutoFilter) và tích hợp <strong class="text-emerald-300">3 Biểu đồ tương tác Native Excel</strong> (tự động cập nhật khi sửa số liệu, không phải ảnh chụp màn hình).
+            Tự động chia thành <strong class="text-emerald-300">6 Sheet riêng biệt</strong> với đầy đủ màu sắc nhận diện, cố định hàng/cột (Freeze Panes), bật sẵn bộ lọc (AutoFilter) và tích hợp <strong class="text-emerald-300">3 Biểu đồ tương tác Native Excel</strong> (tự động cập nhật khi sửa số liệu, không phải ảnh chụp màn hình).
           </p>
 
-          <!-- 5 Sheets Breakdown Grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2">
+          <!-- 6 Sheets Breakdown Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-2">
             
             <!-- Sheet 1 -->
             <div class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 border border-white/10 backdrop-blur-sm transition-all space-y-2">
@@ -530,7 +530,7 @@
               </div>
               <h4 class="font-bold text-sm text-white">2. Tỷ Trọng Topic</h4>
               <p class="text-xs text-slate-400 leading-snug">
-                Chi tiết 12 Topic & Subtopic có %, Content Gaps (chủ đề con 0 bài) & <strong>Biểu đồ Thanh Bar Chart</strong> Top 10 Subtopic.
+                Chi tiết 12 Topic & Subtopic có %, Content Gaps & <strong>Biểu đồ Thanh Bar Chart</strong> Top 10 Subtopic.
               </p>
             </div>
 
@@ -552,18 +552,29 @@
               </div>
               <h4 class="font-bold text-sm text-white">4. Toàn Bộ Bài Viết</h4>
               <p class="text-xs text-slate-400 leading-snug">
-                Bảng 24 cột dữ liệu đa chiều cho 1,000+ URL (Status, Ngày Đăng, Ngày Cập Nhật, Title, H1, Words, Links, Topic, Intent...). Cố định cột URL.
+                Bảng 24 cột dữ liệu đa chiều cho 1,000+ URL (Status, Ngày Đăng, Ngày Cập Nhật, Title, H1, Words, Links, Topic, Intent...).
               </p>
             </div>
 
             <!-- Sheet 5 -->
+            <div class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 border border-amber-400/30 bg-amber-500/10 backdrop-blur-sm transition-all space-y-2">
+              <div class="flex items-center gap-2 text-amber-400 text-sm font-bold">
+                <i class="fa-solid fa-link"></i> Sheet 5
+              </div>
+              <h4 class="font-bold text-sm text-white">5. Liên Kết Nội Bộ</h4>
+              <p class="text-xs text-amber-100/80 leading-snug">
+                Trích xuất Internal Links trong bài viết (bỏ Header/Footer) & Bảng Thống kê tần suất Anchor Text toàn website.
+              </p>
+            </div>
+
+            <!-- Sheet 6 -->
             <div class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 border border-white/10 backdrop-blur-sm transition-all space-y-2">
               <div class="flex items-center gap-2 text-purple-400 text-sm font-bold">
-                <i class="fa-solid fa-sitemap"></i> Sheet 5
+                <i class="fa-solid fa-sitemap"></i> Sheet 6
               </div>
-              <h4 class="font-bold text-sm text-white">5. Cấu Trúc Website</h4>
+              <h4 class="font-bold text-sm text-white">6. Cấu Trúc Website</h4>
               <p class="text-xs text-slate-400 leading-snug">
-                Danh sách Trang mồ côi (Orphan 0 inlinks) & Bảng xếp hạng Top 25 trang nhận nhiều liên kết nội bộ nhất (Authority Hubs).
+                Sơ đồ cây thư mục (Site Tree), phân bố độ sâu, Trang mồ côi & Top 25 trang nhận nhiều liên kết nội bộ nhất.
               </p>
             </div>
 
@@ -653,6 +664,31 @@
           <div class="pt-4 border-t border-slate-100 flex gap-2">
             <a href="/api/export/topics-csv" download class="flex-1 py-2 text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5">
               <i class="fa-solid fa-download"></i> Tải CSV Tỷ Trọng
+            </a>
+          </div>
+        </div>
+
+        <!-- Card: Internal Links Bài Viết CSV -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-amber-300 hover:shadow-md transition-all">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-link"></i>
+              </div>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Bài Viết & Anchor Text</span>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Liên Kết Nội Bộ (Internal Links Bài Viết)</h3>
+              <p class="text-xs text-slate-500 mt-1">Danh sách mọi internal link trích xuất từ thân bài viết (URL nguồn, Title nguồn, Anchor text, URL đích, Title đích, Mã HTTP status) loại bỏ toàn bộ link Header/Footer.</p>
+            </div>
+            <div class="text-[11px] text-slate-500 bg-slate-50 rounded-lg p-2.5 space-y-1">
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Định dạng: <strong>CSV (UTF-8 BOM)</strong></div>
+              <div><i class="fa-solid fa-check text-emerald-500 mr-1.5"></i> Chuẩn cấu trúc để kiểm tra liên kết nội bộ & anchor text.</div>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-slate-100 flex gap-2">
+            <a href="/api/export/internal-links-csv" download class="flex-1 py-2 text-center bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-download"></i> Tải CSV Internal Links
             </a>
           </div>
         </div>

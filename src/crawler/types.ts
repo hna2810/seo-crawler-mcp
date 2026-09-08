@@ -66,6 +66,7 @@ export interface PageData {
   totalExternalLinks: number;
   inlinks: Inlink[];
   outlinks: Outlink[];
+  discoveryLinks?: string[];
   
   // Extracted raw text for classification
   mainContentText: string;

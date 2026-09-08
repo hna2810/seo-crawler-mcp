@@ -1,4 +1,4 @@
-﻿import axios from "axios";
+import axios from "axios";
 import { XMLParser } from "fast-xml-parser";
 
 export interface RobotsInfo {
@@ -17,7 +17,7 @@ export async function fetchRobotsTxt(baseUrl: string, userAgent = "*"): Promise<
     const robotsUrl = `${parsedBase.protocol}//${parsedBase.host}/robots.txt`;
     const res = await axios.get(robotsUrl, {
       timeout: 8000,
-      headers: { "User-Agent": "SEOCrawlerMCP/1.0" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
       validateStatus: () => true
     });
 
@@ -67,7 +67,7 @@ export async function fetchSitemapUrls(sitemapUrl: string, maxUrls = 500, visite
   try {
     const res = await axios.get(sitemapUrl, {
       timeout: 10000,
-      headers: { "User-Agent": "SEOCrawlerMCP/1.0" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
       responseType: "text"
     });
 

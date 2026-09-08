@@ -69,7 +69,9 @@ export class WebsiteCrawler {
   private isSameDomain(targetUrl: string): boolean {
     try {
       const u = new URL(targetUrl);
-      return u.hostname === this.rootDomain || u.hostname.endsWith("." + this.rootDomain);
+      const host = u.hostname.replace(/^www\./i, "").toLowerCase();
+      const root = this.rootDomain.replace(/^www\./i, "").toLowerCase();
+      return host === root || host.endsWith("." + root);
     } catch {
       return false;
     }
@@ -409,20 +411,23 @@ export class WebsiteCrawler {
 
       this.pages[targetUrl] = pageData;
 
-      // Queue new internal links
+      // Queue new internal links (using discoveryLinks from full HTML to discover site pages)
       if (depth < this.options.maxDepth && this.options.mode !== "sitemap") {
-        for (const outlink of pageData.outlinks) {
-          if (!outlink.isExternal) {
-            const nextUrl = this.normalizeUrl(outlink.toUrl);
-            if (
-              this.isSameDomain(nextUrl) &&
-              this.isAllowed(nextUrl) &&
-              !this.visited.has(nextUrl) &&
-              !this.queue.some(q => q.url === nextUrl)
-            ) {
-              if (Object.keys(this.pages).length + this.queue.length < this.options.maxPages * 1.5) {
-                this.queue.push({ url: nextUrl, depth: depth + 1 });
-              }
+        const candidateLinks: string[] =
+          pageData.discoveryLinks && pageData.discoveryLinks.length > 0
+            ? pageData.discoveryLinks
+            : pageData.outlinks.filter(o => !o.isExternal).map(o => o.toUrl);
+
+        for (const candidateUrl of candidateLinks) {
+          const nextUrl = this.normalizeUrl(candidateUrl);
+          if (
+            this.isSameDomain(nextUrl) &&
+            this.isAllowed(nextUrl) &&
+            !this.visited.has(nextUrl) &&
+            !this.queue.some(q => q.url === nextUrl)
+          ) {
+            if (Object.keys(this.pages).length + this.queue.length < this.options.maxPages * 1.5) {
+              this.queue.push({ url: nextUrl, depth: depth + 1 });
             }
           }
         }
