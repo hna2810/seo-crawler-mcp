@@ -5,6 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const path_1 = __importDefault(require("path"));
+const sse_js_1 = require("@modelcontextprotocol/sdk/server/sse.js");
+const mcp_1 = require("./mcp");
 const crawler_1 = require("./crawler/crawler");
 const session_1 = require("./crawler/session");
 const seoAudit_1 = require("./analyzer/seoAudit");
@@ -15,6 +17,17 @@ const taxonomy_1 = require("./config/taxonomy");
 const report_1 = require("./utils/report");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3333;
+const mcpTransports = new Map();
+app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") {
+        res.sendStatus(200);
+        return;
+    }
+    next();
+});
 app.use(express_1.default.json());
 app.use(express_1.default.static(path_1.default.resolve(__dirname, "../public")));
 let activeCrawler = null;
@@ -67,6 +80,31 @@ app.get("/api/crawl/stream", (req, res) => {
         if (idx !== -1)
             sseClients.splice(idx, 1);
     });
+});
+// Remote MCP Endpoints (SSE Transport for AI - Codex, Cursor, Claude Desktop)
+app.get("/sse", async (req, res) => {
+    console.log("[MCP] New SSE client connected");
+    const transport = new sse_js_1.SSEServerTransport("/messages", res);
+    mcpTransports.set(transport.sessionId, transport);
+    transport.onclose = () => {
+        console.log(`[MCP] SSE connection closed for session: ${transport.sessionId}`);
+        mcpTransports.delete(transport.sessionId);
+    };
+    const mcpServer = (0, mcp_1.createMcpServer)();
+    await mcpServer.connect(transport);
+});
+app.post("/messages", async (req, res) => {
+    const sessionId = req.query.sessionId;
+    if (!sessionId) {
+        res.status(400).send("Missing sessionId query parameter");
+        return;
+    }
+    const transport = mcpTransports.get(sessionId);
+    if (!transport) {
+        res.status(404).send(`Session ${sessionId} not found`);
+        return;
+    }
+    await transport.handlePostMessage(req, res, req.body);
 });
 // Crawl Status Polling
 app.get("/api/crawl/status", (_req, res) => {

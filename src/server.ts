@@ -1,5 +1,7 @@
 import express, { Response } from "express";
 import path from "path";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { createMcpServer } from "./mcp";
 import { WebsiteCrawler } from "./crawler/crawler";
 import { getSession, getLatestSessionId, listSessions } from "./crawler/session";
 import { performSEOAudit } from "./analyzer/seoAudit";
@@ -19,6 +21,19 @@ import {
 
 const app = express();
 const PORT = process.env.PORT || 3333;
+
+const mcpTransports = new Map<string, SSEServerTransport>();
+
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
 
 app.use(express.json());
 app.use(express.static(path.resolve(__dirname, "../public")));
@@ -78,10 +93,40 @@ app.get("/api/crawl/stream", (req, res) => {
   });
 });
 
+// Remote MCP Endpoints (SSE Transport for AI - Codex, Cursor, Claude Desktop)
+app.get("/sse", async (req, res) => {
+  console.log("[MCP] New SSE client connected");
+  const transport = new SSEServerTransport("/messages", res);
+  mcpTransports.set(transport.sessionId, transport);
+
+  transport.onclose = () => {
+    console.log(`[MCP] SSE connection closed for session: ${transport.sessionId}`);
+    mcpTransports.delete(transport.sessionId);
+  };
+
+  const mcpServer = createMcpServer();
+  await mcpServer.connect(transport);
+});
+
+app.post("/messages", async (req, res) => {
+  const sessionId = req.query.sessionId as string;
+  if (!sessionId) {
+    res.status(400).send("Missing sessionId query parameter");
+    return;
+  }
+  const transport = mcpTransports.get(sessionId);
+  if (!transport) {
+    res.status(404).send(`Session ${sessionId} not found`);
+    return;
+  }
+  await transport.handlePostMessage(req, res, req.body);
+});
+
 // Crawl Status Polling
 app.get("/api/crawl/status", (_req, res) => {
   res.json(lastProgress);
 });
+
 
 // Stop Crawling
 app.post("/api/crawl/stop", (_req, res) => {
