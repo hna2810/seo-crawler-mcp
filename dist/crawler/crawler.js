@@ -29,7 +29,7 @@ class WebsiteCrawler {
         this.httpClient = axios_1.default.create({
             httpsAgent,
             httpAgent,
-            timeout: 8000,
+            timeout: 15000,
             maxRedirects: 5,
             validateStatus: () => true
         });
@@ -252,7 +252,7 @@ class WebsiteCrawler {
                         "User-Agent": this.options.userAgent,
                         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
                     },
-                    timeout: 8000
+                    timeout: 15000
                 });
                 fetchError = null;
                 break;
