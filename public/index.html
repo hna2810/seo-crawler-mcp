@@ -876,17 +876,58 @@
     }
 
     let crawlPollInterval = null;
+    let isCrawlRunning = false;
+
+    function cleanupCrawlListeners() {
+      if (crawlPollInterval) {
+        clearInterval(crawlPollInterval);
+        crawlPollInterval = null;
+      }
+      if (eventSource) {
+        try { eventSource.close(); } catch {}
+        eventSource = null;
+      }
+      isCrawlRunning = false;
+      document.getElementById("crawl-submit-btn").disabled = false;
+      document.getElementById("crawl-stop-btn").disabled = true;
+    }
+
+    async function onCrawlFinished() {
+      cleanupCrawlListeners();
+      try {
+        const sRes = await fetch("/api/session/latest");
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          if (sData && sData.totalPages > 0) {
+            currentSessionData = sData;
+            renderAllAnalysis(sData);
+            loadSessionsList();
+            switchTab("topics");
+          }
+        }
+      } catch (err) {
+        console.error("Error loading completed session:", err);
+      }
+    }
 
     function connectSSE() {
       if (eventSource) {
         try { eventSource.close(); } catch {}
+        eventSource = null;
       }
+
       try {
         eventSource = new EventSource("/api/crawl/stream");
         eventSource.onmessage = (e) => {
           try {
             const p = JSON.parse(e.data);
             updateLiveProgress(p);
+            if (p.status === "completed" || p.status === "stopped") {
+              onCrawlFinished();
+            } else if (p.status === "error") {
+              cleanupCrawlListeners();
+              alert("Lỗi quét website: " + (p.error || "Không xác định"));
+            }
           } catch {}
         };
         eventSource.onerror = () => {
@@ -896,7 +937,7 @@
         console.warn("EventSource error, relying on poll:", err);
       }
 
-      // Start guaranteed fallback polling interval every 1000ms
+      // Start guaranteed fallback polling interval every 1500ms
       if (crawlPollInterval) clearInterval(crawlPollInterval);
       crawlPollInterval = setInterval(async () => {
         try {
@@ -905,23 +946,14 @@
             const p = await res.json();
             updateLiveProgress(p);
             if (p.status === "completed" || p.status === "stopped") {
-              clearInterval(crawlPollInterval);
-              crawlPollInterval = null;
-              if (!currentSessionData) {
-                const sRes = await fetch("/api/session/latest");
-                if (sRes.ok) {
-                  const sData = await sRes.json();
-                  if (sData && sData.totalPages > 0) {
-                    currentSessionData = sData;
-                    renderAllAnalysis(sData);
-                    switchTab("topics");
-                  }
-                }
-              }
+              onCrawlFinished();
+            } else if (p.status === "error") {
+              cleanupCrawlListeners();
+              alert("Lỗi quét website: " + (p.error || "Không xác định"));
             }
           }
         } catch {}
-      }, 1000);
+      }, 1500);
     }
 
     function updateLiveProgress(p) {
@@ -935,6 +967,9 @@
 
       if (p.status === "running") {
         document.getElementById("crawl-live-box").classList.remove("hidden");
+        document.getElementById("crawl-submit-btn").disabled = true;
+        document.getElementById("crawl-stop-btn").disabled = false;
+
         badge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200";
         badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span> Đang cào dữ liệu...`;
 
@@ -962,21 +997,9 @@
     async function handleStopCrawl() {
       document.getElementById("crawl-stop-btn").disabled = true;
       document.getElementById("live-status-title").innerText = "Đang dừng và tổng hợp dữ liệu cào...";
+      document.getElementById("live-log-line").innerText = "Đã gửi lệnh dừng, vui lòng đợi hệ thống hoàn tất lưu phiên...";
       try {
         await fetch("/api/crawl/stop", { method: "POST" });
-        setTimeout(async () => {
-          try {
-            const sRes = await fetch("/api/session/latest");
-            if (sRes.ok) {
-              const sData = await sRes.json();
-              if (sData && sData.totalPages > 0) {
-                currentSessionData = sData;
-                renderAllAnalysis(sData);
-                switchTab("topics");
-              }
-            }
-          } catch {}
-        }, 1000);
       } catch (err) {
         console.error("Stop error:", err);
       }
@@ -995,8 +1018,10 @@
       document.getElementById("crawl-submit-btn").disabled = true;
       document.getElementById("crawl-stop-btn").disabled = false;
       document.getElementById("live-status-title").innerText = "Đang quét website theo thời gian thực...";
+      document.getElementById("live-log-line").innerText = "Đang gửi yêu cầu khởi động cào ngầm tới máy chủ...";
 
       currentSessionData = null;
+      isCrawlRunning = true;
       connectSSE();
 
       try {
@@ -1013,29 +1038,16 @@
           })
         });
 
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: `Lỗi máy chủ (${res.status})` }));
+          throw new Error(errData.error || "Không thể khởi động cào");
+        }
+
         const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        currentSessionData = data;
-        renderAllAnalysis(data);
-        loadSessionsList();
-
-        // TỰ ĐỘNG CHUYỂN NGAY SANG TAB TỶ TRỌNG NỘI DUNG ĐỂ NGƯỜI DÙNG XEM
-        switchTab("topics");
+        document.getElementById("live-log-line").innerText = data.message || "Tiến trình cào đã được kích hoạt thành công trên máy chủ!";
       } catch (err) {
-        // If stopped by user, do not alert as an error
-        console.warn("Crawl ended or stopped:", err);
-      } finally {
-        if (crawlPollInterval) {
-          clearInterval(crawlPollInterval);
-          crawlPollInterval = null;
-        }
-        if (eventSource) {
-          try { eventSource.close(); } catch {}
-          eventSource = null;
-        }
-        document.getElementById("crawl-live-box").classList.add("hidden");
-        document.getElementById("crawl-submit-btn").disabled = false;
+        cleanupCrawlListeners();
+        alert("Lỗi khởi động cào: " + err.message);
       }
     }
 

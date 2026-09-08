@@ -80,8 +80,9 @@ setInterval(() => {
 // SSE Stream for Realtime Crawl Progress
 app.get("/api/crawl/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
 
   // Send current state
@@ -97,6 +98,8 @@ app.get("/api/crawl/stream", (req, res) => {
 // Remote MCP Endpoints (SSE Transport for AI - Codex, Cursor, Claude Desktop)
 app.get("/sse", async (req, res) => {
   console.log("[MCP] New SSE client connected");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
   const transport = new SSEServerTransport("/messages", res);
   mcpTransports.set(transport.sessionId, transport);
 
@@ -144,127 +147,6 @@ app.post("/api/crawl/stop", (_req, res) => {
   }
 });
 
-// Start Crawl (Asynchronous with Live Progress)
-app.post("/api/crawl", async (req, res) => {
-  try {
-    const {
-      url,
-      mode = "full",
-      sitemapUrl,
-      maxDepth = 3,
-      maxPages = 1000,
-      includePattern,
-      excludePattern,
-      concurrency = 15,
-      delayMs = 0
-    } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ error: "Website URL là bắt buộc" });
-    }
-
-    // Abort existing crawl if any
-    if (activeCrawler) {
-      activeCrawler.abort();
-    }
-
-    activeCrawler = new WebsiteCrawler({
-      url,
-      mode,
-      sitemapUrl,
-      maxDepth: Number(maxDepth),
-      maxPages: Number(maxPages),
-      includePattern,
-      excludePattern,
-      concurrency: Number(concurrency),
-      delayMs: Number(delayMs),
-      onProgress: (p) => {
-        broadcastProgress(p);
-      }
-    });
-
-    broadcastProgress({
-      crawledCount: 0,
-      totalQueued: 1,
-      currentUrl: `Bắt đầu quét ${url}...`,
-      statusCode: 200,
-      speedPagesPerSec: 0,
-      elapsedSec: 0,
-      status: "running"
-    });
-
-    const session = await activeCrawler.crawl();
-    activeCrawler = null;
-
-    const audit = performSEOAudit(session.pages);
-    const structure = buildSiteStructure(session.pages, session.rootUrl);
-    const classifications = Object.values(session.pages)
-      .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !isNonArticleUrlOrTitle(p.url, p.finalUrl, p.title))
-      .map(p => classifyPage(p));
-    const contentRatio = computeContentRatio(classifications);
-
-    analysisCache.set(session.id, { session, audit, structure, contentRatio, classifications });
-
-    const fullResult = {
-      sessionId: session.id,
-      rootUrl: session.rootUrl,
-      durationMs: session.durationMs,
-      totalPages: Object.keys(session.pages).length,
-      audit,
-      structure,
-      contentRatio,
-      classifications
-    };
-
-    broadcastProgress({
-      crawledCount: Object.keys(session.pages).length,
-      totalQueued: Object.keys(session.pages).length,
-      currentUrl: "Đã hoàn thành toàn bộ quá trình quét & phân tích!",
-      statusCode: 200,
-      speedPagesPerSec: Number((Object.keys(session.pages).length / Math.max(1, session.durationMs / 1000)).toFixed(1)),
-      elapsedSec: Math.round(session.durationMs / 1000),
-      status: "completed"
-    });
-
-    res.json(fullResult);
-  } catch (err: any) {
-    activeCrawler = null;
-    broadcastProgress({
-      ...lastProgress,
-      status: "error",
-      error: err.message
-    });
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Taxonomy
-app.get("/api/taxonomy", (_req, res) => {
-  res.json({
-    topics: MOTHER_BABY_TAXONOMY,
-    contexts: CONTEXT_LIST,
-    locations: LOCATION_LIST
-  });
-});
-
-// Classify Single Query
-app.post("/api/classify-single", (req, res) => {
-  try {
-    const { url, title, h1, headings, boldKeywords, mainText } = req.body;
-    const result = classifyContent({
-      url,
-      title,
-      h1,
-      headings,
-      boldKeywords,
-      mainText
-    });
-    res.json(result);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Session Analysis Cache & Helper
 const analysisCache = new Map<string, {
   session: any;
@@ -296,6 +178,135 @@ function getSessionAnalysis(sessionIdOrRaw?: string) {
   analysisCache.set(sessionId, result);
   return result;
 }
+
+// Start Crawl (Fully Asynchronous Background Job to prevent Reverse Proxy timeouts)
+app.post("/api/crawl", (req, res) => {
+  try {
+    const {
+      url,
+      mode = "full",
+      sitemapUrl,
+      maxDepth = 3,
+      maxPages = 1000,
+      includePattern,
+      excludePattern,
+      concurrency = 15,
+      delayMs = 0
+    } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: "Website URL là bắt buộc" });
+    }
+
+    // Abort existing crawl if any
+    if (activeCrawler) {
+      try {
+        activeCrawler.abort();
+      } catch {}
+      activeCrawler = null;
+    }
+
+    const crawlerInstance = new WebsiteCrawler({
+      url,
+      mode,
+      sitemapUrl,
+      maxDepth: Number(maxDepth),
+      maxPages: Number(maxPages),
+      includePattern,
+      excludePattern,
+      concurrency: Number(concurrency),
+      delayMs: Number(delayMs),
+      onProgress: (p) => {
+        broadcastProgress(p);
+      }
+    });
+    activeCrawler = crawlerInstance;
+
+    broadcastProgress({
+      crawledCount: 0,
+      totalQueued: 1,
+      currentUrl: `Bắt đầu quét ${url}...`,
+      statusCode: 200,
+      speedPagesPerSec: 0,
+      elapsedSec: 0,
+      status: "running"
+    });
+
+    // Respond immediately with 202 Accepted so Nginx/LiteSpeed 60s proxy timeout is NEVER reached!
+    res.status(202).json({
+      status: "started",
+      message: "Tiến trình cào dữ liệu đã bắt đầu chạy ngầm trên máy chủ.",
+      url
+    });
+
+    // Run crawler asynchronously in background
+    (async () => {
+      try {
+        const session = await crawlerInstance.crawl();
+        if (activeCrawler === crawlerInstance) {
+          activeCrawler = null;
+        }
+
+        const audit = performSEOAudit(session.pages);
+        const structure = buildSiteStructure(session.pages, session.rootUrl);
+        const classifications = Object.values(session.pages)
+          .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !isNonArticleUrlOrTitle(p.url, p.finalUrl, p.title))
+          .map(p => classifyPage(p));
+        const contentRatio = computeContentRatio(classifications);
+
+        analysisCache.set(session.id, { session, audit, structure, contentRatio, classifications });
+
+        broadcastProgress({
+          crawledCount: Object.keys(session.pages).length,
+          totalQueued: Object.keys(session.pages).length,
+          currentUrl: "Đã hoàn thành toàn bộ quá trình quét & phân tích!",
+          statusCode: 200,
+          speedPagesPerSec: Number((Object.keys(session.pages).length / Math.max(1, session.durationMs / 1000)).toFixed(1)),
+          elapsedSec: Math.round(session.durationMs / 1000),
+          status: "completed"
+        });
+      } catch (err: any) {
+        if (activeCrawler === crawlerInstance) {
+          activeCrawler = null;
+        }
+        broadcastProgress({
+          ...lastProgress,
+          status: "error",
+          error: err.message
+        });
+      }
+    })();
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Taxonomy
+app.get("/api/taxonomy", (_req, res) => {
+  res.json({
+    topics: MOTHER_BABY_TAXONOMY,
+    contexts: CONTEXT_LIST,
+    locations: LOCATION_LIST
+  });
+});
+
+// Classify Single Query
+app.post("/api/classify-single", (req, res) => {
+  try {
+    const { url, title, h1, headings, boldKeywords, mainText } = req.body;
+    const result = classifyContent({
+      url,
+      title,
+      h1,
+      headings,
+      boldKeywords,
+      mainText
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Session Details
 const handleGetSession: express.RequestHandler = (req, res) => {

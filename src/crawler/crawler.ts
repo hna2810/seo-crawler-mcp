@@ -22,13 +22,13 @@ export class WebsiteCrawler {
     this.rootDomain = urlObj.hostname;
 
     // High performance HTTP client with Keep-Alive connection pooling
-    const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100 });
-    const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 100 });
+    const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 60 });
+    const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 60 });
 
     this.httpClient = axios.create({
       httpsAgent,
       httpAgent,
-      timeout: 10000,
+      timeout: 8000,
       maxRedirects: 5,
       validateStatus: () => true
     });
@@ -278,14 +278,14 @@ export class WebsiteCrawler {
             "User-Agent": this.options.userAgent,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
           },
-          timeout: 12000
+          timeout: 8000
         });
         fetchError = null;
         break;
       } catch (err: any) {
         fetchError = err;
         if (attempt === 0 && !this.isAborted) {
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise(r => setTimeout(r, 200));
         }
       }
     }

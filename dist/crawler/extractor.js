@@ -116,16 +116,20 @@ function extractPageData(html, url, finalUrl, statusCode, contentType, crawlTime
         catch { }
     });
     // 5. Content extraction for Word Count & Semantic Classification
-    // Remove boilerplate: script, style, nav, footer, header, aside, form, svg, noscript, etc.
-    const clone$ = cheerio.load(html);
-    clone$("script, style, nav, footer, header, aside, form, svg, noscript, iframe, button, " +
+    // Find the post/article content container without re-parsing the entire HTML tree
+    const $articleTarget = $("article, .entry-content, .post-content, .single-post-content, .content-detail, .post-detail, .td-post-content, main, #main, #content").first();
+    let $articleContainer = $articleTarget.length > 0 ? $articleTarget.clone() : $("body").clone();
+    // Remove boilerplate from the container clone
+    $articleContainer.find("script, style, nav, footer, header, aside, form, svg, noscript, iframe, button, " +
         ".header, .footer, .site-header, .site-footer, .main-navigation, .menu, .navbar, .nav, " +
         ".sidebar, #sidebar, .widget, #comments, .comments-area, .breadcrumbs, .breadcrumb, " +
         ".social-share, .share-box, .related-posts, .author-box, .elementor-location-header, .elementor-location-footer").remove();
-    // Find the post/article content container
-    let $articleContainer = clone$("article, .entry-content, .post-content, .single-post-content, .content-detail, .post-detail, .td-post-content, main, #main, #content").first();
-    if (!$articleContainer || $articleContainer.length === 0 || $articleContainer.text().trim().length < 50) {
-        $articleContainer = clone$("body");
+    if ($articleContainer.text().trim().length < 50 && $articleTarget.length > 0) {
+        $articleContainer = $("body").clone();
+        $articleContainer.find("script, style, nav, footer, header, aside, form, svg, noscript, iframe, button, " +
+            ".header, .footer, .site-header, .site-footer, .main-navigation, .menu, .navbar, .nav, " +
+            ".sidebar, #sidebar, .widget, #comments, .comments-area, .breadcrumbs, .breadcrumb, " +
+            ".social-share, .share-box, .related-posts, .author-box, .elementor-location-header, .elementor-location-footer").remove();
     }
     const cleanMainText = (0, text_1.cleanText)($articleContainer.text());
     const wordCount = (0, text_1.countWords)(cleanMainText);
@@ -247,7 +251,7 @@ function extractPageData(html, url, finalUrl, statusCode, contentType, crawlTime
         inlinks: [],
         outlinks,
         discoveryLinks,
-        mainContentText: cleanMainText
+        mainContentText: cleanMainText.slice(0, 8000)
     };
 }
 function formatDateTime(str) {

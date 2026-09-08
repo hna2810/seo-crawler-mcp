@@ -70,8 +70,9 @@ setInterval(() => {
 // SSE Stream for Realtime Crawl Progress
 app.get("/api/crawl/stream", (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
     // Send current state
     res.write(`data: ${JSON.stringify(lastProgress)}\n\n`);
@@ -85,6 +86,8 @@ app.get("/api/crawl/stream", (req, res) => {
 // Remote MCP Endpoints (SSE Transport for AI - Codex, Cursor, Claude Desktop)
 app.get("/sse", async (req, res) => {
     console.log("[MCP] New SSE client connected");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     const transport = new sse_js_1.SSEServerTransport("/messages", res);
     mcpTransports.set(transport.sessionId, transport);
     transport.onclose = () => {
@@ -126,8 +129,30 @@ app.post("/api/crawl/stop", (_req, res) => {
         res.json({ message: "Không có tiến trình quét nào đang chạy." });
     }
 });
-// Start Crawl (Asynchronous with Live Progress)
-app.post("/api/crawl", async (req, res) => {
+// Session Analysis Cache & Helper
+const analysisCache = new Map();
+function getSessionAnalysis(sessionIdOrRaw) {
+    const sessionId = !sessionIdOrRaw || sessionIdOrRaw === "latest" ? (0, session_1.getLatestSessionId)() : sessionIdOrRaw;
+    if (!sessionId)
+        return null;
+    if (analysisCache.has(sessionId)) {
+        return analysisCache.get(sessionId);
+    }
+    const session = (0, session_1.getSession)(sessionId);
+    if (!session)
+        return null;
+    const audit = (0, seoAudit_1.performSEOAudit)(session.pages);
+    const structure = (0, siteTree_1.buildSiteStructure)(session.pages, session.rootUrl);
+    const classifications = Object.values(session.pages)
+        .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
+        .map(p => (0, topicClassifier_1.classifyPage)(p));
+    const contentRatio = (0, contentRatio_1.computeContentRatio)(classifications);
+    const result = { session, audit, structure, contentRatio, classifications };
+    analysisCache.set(sessionId, result);
+    return result;
+}
+// Start Crawl (Fully Asynchronous Background Job to prevent Reverse Proxy timeouts)
+app.post("/api/crawl", (req, res) => {
     try {
         const { url, mode = "full", sitemapUrl, maxDepth = 3, maxPages = 1000, includePattern, excludePattern, concurrency = 15, delayMs = 0 } = req.body;
         if (!url) {
@@ -135,9 +160,13 @@ app.post("/api/crawl", async (req, res) => {
         }
         // Abort existing crawl if any
         if (activeCrawler) {
-            activeCrawler.abort();
+            try {
+                activeCrawler.abort();
+            }
+            catch { }
+            activeCrawler = null;
         }
-        activeCrawler = new crawler_1.WebsiteCrawler({
+        const crawlerInstance = new crawler_1.WebsiteCrawler({
             url,
             mode,
             sitemapUrl,
@@ -151,6 +180,7 @@ app.post("/api/crawl", async (req, res) => {
                 broadcastProgress(p);
             }
         });
+        activeCrawler = crawlerInstance;
         broadcastProgress({
             crawledCount: 0,
             totalQueued: 1,
@@ -160,43 +190,49 @@ app.post("/api/crawl", async (req, res) => {
             elapsedSec: 0,
             status: "running"
         });
-        const session = await activeCrawler.crawl();
-        activeCrawler = null;
-        const audit = (0, seoAudit_1.performSEOAudit)(session.pages);
-        const structure = (0, siteTree_1.buildSiteStructure)(session.pages, session.rootUrl);
-        const classifications = Object.values(session.pages)
-            .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
-            .map(p => (0, topicClassifier_1.classifyPage)(p));
-        const contentRatio = (0, contentRatio_1.computeContentRatio)(classifications);
-        analysisCache.set(session.id, { session, audit, structure, contentRatio, classifications });
-        const fullResult = {
-            sessionId: session.id,
-            rootUrl: session.rootUrl,
-            durationMs: session.durationMs,
-            totalPages: Object.keys(session.pages).length,
-            audit,
-            structure,
-            contentRatio,
-            classifications
-        };
-        broadcastProgress({
-            crawledCount: Object.keys(session.pages).length,
-            totalQueued: Object.keys(session.pages).length,
-            currentUrl: "Đã hoàn thành toàn bộ quá trình quét & phân tích!",
-            statusCode: 200,
-            speedPagesPerSec: Number((Object.keys(session.pages).length / Math.max(1, session.durationMs / 1000)).toFixed(1)),
-            elapsedSec: Math.round(session.durationMs / 1000),
-            status: "completed"
+        // Respond immediately with 202 Accepted so Nginx/LiteSpeed 60s proxy timeout is NEVER reached!
+        res.status(202).json({
+            status: "started",
+            message: "Tiến trình cào dữ liệu đã bắt đầu chạy ngầm trên máy chủ.",
+            url
         });
-        res.json(fullResult);
+        // Run crawler asynchronously in background
+        (async () => {
+            try {
+                const session = await crawlerInstance.crawl();
+                if (activeCrawler === crawlerInstance) {
+                    activeCrawler = null;
+                }
+                const audit = (0, seoAudit_1.performSEOAudit)(session.pages);
+                const structure = (0, siteTree_1.buildSiteStructure)(session.pages, session.rootUrl);
+                const classifications = Object.values(session.pages)
+                    .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
+                    .map(p => (0, topicClassifier_1.classifyPage)(p));
+                const contentRatio = (0, contentRatio_1.computeContentRatio)(classifications);
+                analysisCache.set(session.id, { session, audit, structure, contentRatio, classifications });
+                broadcastProgress({
+                    crawledCount: Object.keys(session.pages).length,
+                    totalQueued: Object.keys(session.pages).length,
+                    currentUrl: "Đã hoàn thành toàn bộ quá trình quét & phân tích!",
+                    statusCode: 200,
+                    speedPagesPerSec: Number((Object.keys(session.pages).length / Math.max(1, session.durationMs / 1000)).toFixed(1)),
+                    elapsedSec: Math.round(session.durationMs / 1000),
+                    status: "completed"
+                });
+            }
+            catch (err) {
+                if (activeCrawler === crawlerInstance) {
+                    activeCrawler = null;
+                }
+                broadcastProgress({
+                    ...lastProgress,
+                    status: "error",
+                    error: err.message
+                });
+            }
+        })();
     }
     catch (err) {
-        activeCrawler = null;
-        broadcastProgress({
-            ...lastProgress,
-            status: "error",
-            error: err.message
-        });
         res.status(500).json({ error: err.message });
     }
 });
@@ -226,28 +262,6 @@ app.post("/api/classify-single", (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-// Session Analysis Cache & Helper
-const analysisCache = new Map();
-function getSessionAnalysis(sessionIdOrRaw) {
-    const sessionId = !sessionIdOrRaw || sessionIdOrRaw === "latest" ? (0, session_1.getLatestSessionId)() : sessionIdOrRaw;
-    if (!sessionId)
-        return null;
-    if (analysisCache.has(sessionId)) {
-        return analysisCache.get(sessionId);
-    }
-    const session = (0, session_1.getSession)(sessionId);
-    if (!session)
-        return null;
-    const audit = (0, seoAudit_1.performSEOAudit)(session.pages);
-    const structure = (0, siteTree_1.buildSiteStructure)(session.pages, session.rootUrl);
-    const classifications = Object.values(session.pages)
-        .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
-        .map(p => (0, topicClassifier_1.classifyPage)(p));
-    const contentRatio = (0, contentRatio_1.computeContentRatio)(classifications);
-    const result = { session, audit, structure, contentRatio, classifications };
-    analysisCache.set(sessionId, result);
-    return result;
-}
 // Session Details
 const handleGetSession = (req, res) => {
     const rawId = req.params["id"] || req.query.sessionId;
