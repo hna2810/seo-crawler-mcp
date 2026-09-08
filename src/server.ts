@@ -198,12 +198,12 @@ app.post("/api/crawl", (req, res) => {
       return res.status(400).json({ error: "Website URL là bắt buộc" });
     }
 
-    // Abort existing crawl if any
-    if (activeCrawler) {
-      try {
-        activeCrawler.abort();
-      } catch {}
-      activeCrawler = null;
+    // Guard: Do not abort if a crawler is currently actively running
+    if (activeCrawler && activeCrawler.isRunning()) {
+      return res.status(409).json({
+        error: "Một tiến trình cào website đang chạy. Vui lòng đợi hoàn tất hoặc bấm nút 'Dừng quét' trước khi bắt đầu tiến trình mới.",
+        status: "already_running"
+      });
     }
 
     const crawlerInstance = new WebsiteCrawler({

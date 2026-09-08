@@ -1007,6 +1007,9 @@
 
     async function handleStartCrawl(e) {
       e.preventDefault();
+      if (isCrawlRunning) {
+        return;
+      }
       const url = document.getElementById("crawl-url").value.trim();
       const mode = document.getElementById("crawl-mode").value;
       const maxPages = document.getElementById("crawl-max-pages").value;
@@ -1046,6 +1049,7 @@
         const data = await res.json();
         document.getElementById("live-log-line").innerText = data.message || "Tiến trình cào đã được kích hoạt thành công trên máy chủ!";
       } catch (err) {
+        isCrawlRunning = false;
         cleanupCrawlListeners();
         alert("Lỗi khởi động cào: " + err.message);
       }

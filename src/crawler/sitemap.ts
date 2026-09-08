@@ -57,17 +57,20 @@ export async function fetchRobotsTxt(baseUrl: string, userAgent = "*"): Promise<
   return result;
 }
 
-export async function fetchSitemapUrls(sitemapUrl: string, maxUrls = 500, visitedSitemaps = new Set<string>()): Promise<string[]> {
+export async function fetchSitemapUrls(sitemapUrl: string, maxUrls = 10000, visitedSitemaps = new Set<string>()): Promise<string[]> {
   const collectedUrls: string[] = [];
-  if (visitedSitemaps.has(sitemapUrl) || visitedSitemaps.size > 20) {
+  if (visitedSitemaps.has(sitemapUrl) || visitedSitemaps.size > 50) {
     return collectedUrls;
   }
   visitedSitemaps.add(sitemapUrl);
 
   try {
     const res = await axios.get(sitemapUrl, {
-      timeout: 10000,
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+      timeout: 25000,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/xml,text/xml,*/*;q=0.9"
+      },
       responseType: "text"
     });
 
@@ -88,13 +91,25 @@ export async function fetchSitemapUrls(sitemapUrl: string, maxUrls = 500, visite
         ? parsed.sitemapindex.sitemap
         : [parsed.sitemapindex.sitemap];
 
-      for (const sm of sitemaps) {
-        if (collectedUrls.length >= maxUrls) break;
-        const subLoc = typeof sm.loc === "string" ? sm.loc.trim() : "";
-        if (subLoc) {
-          const subUrls = await fetchSitemapUrls(subLoc, maxUrls - collectedUrls.length, visitedSitemaps);
-          collectedUrls.push(...subUrls);
+      const subLocs: string[] = sitemaps
+        .map((sm: any) => (typeof sm.loc === "string" ? sm.loc.trim() : ""))
+        .filter((loc: string) => Boolean(loc));
+
+      // Fetch all sub-sitemaps in parallel with Promise.allSettled for maximum speed and fault tolerance
+      const results = await Promise.allSettled(
+        subLocs.map(subLoc => fetchSitemapUrls(subLoc, maxUrls, visitedSitemaps))
+      );
+
+      for (const r of results) {
+        if (r.status === "fulfilled") {
+          for (const u of r.value) {
+            if (!collectedUrls.includes(u)) {
+              collectedUrls.push(u);
+              if (collectedUrls.length >= maxUrls) break;
+            }
+          }
         }
+        if (collectedUrls.length >= maxUrls) break;
       }
     }
 
@@ -116,7 +131,7 @@ export async function fetchSitemapUrls(sitemapUrl: string, maxUrls = 500, visite
   return collectedUrls;
 }
 
-export async function discoverSitemapUrls(baseUrl: string, maxUrls = 500): Promise<string[]> {
+export async function discoverSitemapUrls(baseUrl: string, maxUrls = 10000): Promise<string[]> {
   const robots = await fetchRobotsTxt(baseUrl);
   const potentialSitemaps = [...robots.sitemapUrls];
 
@@ -136,10 +151,17 @@ export async function discoverSitemapUrls(baseUrl: string, maxUrls = 500): Promi
     }
   }
 
+  const allDiscovered: string[] = [];
   for (const sitemapUrl of potentialSitemaps) {
     const urls = await fetchSitemapUrls(sitemapUrl, maxUrls);
-    if (urls.length > 0) {
-      return urls;
+    for (const u of urls) {
+      if (!allDiscovered.includes(u)) {
+        allDiscovered.push(u);
+        if (allDiscovered.length >= maxUrls) break;
+      }
+    }
+    if (allDiscovered.length > 0) {
+      return allDiscovered;
     }
   }
 

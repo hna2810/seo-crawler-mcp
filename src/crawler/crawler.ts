@@ -15,6 +15,7 @@ export class WebsiteCrawler {
   private errors: { url: string; error: string; statusCode?: number }[] = [];
   private disallowedPaths: string[] = [];
   private isAborted = false;
+  private running = false;
   private httpClient: AxiosInstance;
 
   constructor(options: CrawlOptions) {
@@ -51,6 +52,11 @@ export class WebsiteCrawler {
 
   public abort(): void {
     this.isAborted = true;
+    this.running = false;
+  }
+
+  public isRunning(): boolean {
+    return this.running && !this.isAborted;
   }
 
   private normalizeUrl(rawUrl: string): string {
@@ -124,141 +130,152 @@ export class WebsiteCrawler {
   }
 
   public async crawl(): Promise<CrawlSession> {
+    this.running = true;
     const startTime = new Date().toISOString();
     const startMs = Date.now();
     const sessionId = "crawl_" + Date.now();
 
-    // 1. Robots.txt
-    if (this.options.respectRobots) {
-      const robots = await fetchRobotsTxt(this.options.url, this.options.userAgent);
-      this.disallowedPaths = robots.disallowedPaths;
-    }
-
-    // 2. Populate initial queue
-    const normalizedRoot = this.normalizeUrl(this.options.url);
-    this.queue.push({ url: normalizedRoot, depth: 0 });
-
-    // Seed sitemap URLs for fast discovery
     try {
-      let sitemapUrls: string[] = [];
-      if (this.options.sitemapUrl) {
-        sitemapUrls = await fetchSitemapUrls(this.options.sitemapUrl, this.options.maxPages);
-      } else {
-        sitemapUrls = await discoverSitemapUrls(this.options.url, this.options.maxPages);
+      // 1. Robots.txt
+      if (this.options.respectRobots) {
+        const robots = await fetchRobotsTxt(this.options.url, this.options.userAgent);
+        this.disallowedPaths = robots.disallowedPaths;
       }
 
-      for (const smUrl of sitemapUrls) {
-        const norm = this.normalizeUrl(smUrl);
-        if (this.isSameDomain(norm) && this.isAllowed(norm) && !this.queue.some(q => q.url === norm)) {
-          this.queue.push({ url: norm, depth: 1 });
-        }
-      }
-    } catch {
-      // Ignore sitemap discovery error
-    }
+      // 2. Populate initial queue
+      const normalizedRoot = this.normalizeUrl(this.options.url);
+      this.queue.push({ url: normalizedRoot, depth: 0 });
 
-    // 3. Worker queue execution with High Concurrency Pool
-    const concurrency = Math.max(1, Math.min(this.options.concurrency, 30));
-    const activeWorkers: Promise<void>[] = [];
-    let activeFetchingCount = 0;
-    let isDone = false;
-    let lastProgressNotifyMs = 0;
-
-    const notifyProgress = (currentUrl: string, statusCode: number) => {
-      const now = Date.now();
-      const crawledCount = Object.keys(this.pages).length;
-      if (this.options.onProgress && (now - lastProgressNotifyMs >= 120 || crawledCount % 10 === 0)) {
-        lastProgressNotifyMs = now;
-        const elapsedSec = Math.max(0.1, (now - startMs) / 1000);
-        const speed = Number((crawledCount / elapsedSec).toFixed(1));
-        this.options.onProgress({
-          crawledCount,
-          totalQueued: this.queue.length + crawledCount,
-          currentUrl,
-          statusCode,
-          speedPagesPerSec: speed,
-          elapsedSec: Math.round(elapsedSec),
-          status: "running"
-        });
-      }
-    };
-
-    const worker = async () => {
-      while (!isDone && !this.isAborted) {
-        if (Object.keys(this.pages).length >= this.options.maxPages) {
-          isDone = true;
-          break;
+      // Seed sitemap URLs for fast discovery
+      try {
+        let sitemapUrls: string[] = [];
+        if (this.options.sitemapUrl) {
+          sitemapUrls = await fetchSitemapUrls(this.options.sitemapUrl, this.options.maxPages);
+        } else {
+          sitemapUrls = await discoverSitemapUrls(this.options.url, this.options.maxPages);
         }
 
-        const item = this.queue.shift();
-        if (!item) {
-          // If queue is empty:
-          // If no workers are currently fetching, then no more URLs will ever be found -> crawl is done!
-          if (activeFetchingCount === 0) {
+        for (const smUrl of sitemapUrls) {
+          const norm = this.normalizeUrl(smUrl);
+          if (this.isSameDomain(norm) && this.isAllowed(norm) && !this.queue.some(q => q.url === norm)) {
+            this.queue.push({ url: norm, depth: 1 });
+          }
+        }
+      } catch {
+        // Ignore sitemap discovery error
+      }
+
+      // 3. Worker queue execution with High Concurrency Pool
+      const concurrency = Math.max(1, Math.min(this.options.concurrency, 30));
+      const activeWorkers: Promise<void>[] = [];
+      let activeFetchingCount = 0;
+      let isDone = false;
+      let lastProgressNotifyMs = 0;
+
+      const notifyProgress = (currentUrl: string, statusCode: number) => {
+        const now = Date.now();
+        const crawledCount = Object.keys(this.pages).length;
+        if (this.options.onProgress && (now - lastProgressNotifyMs >= 120 || crawledCount % 10 === 0)) {
+          lastProgressNotifyMs = now;
+          const elapsedSec = Math.max(0.1, (now - startMs) / 1000);
+          const speed = Number((crawledCount / elapsedSec).toFixed(1));
+          this.options.onProgress({
+            crawledCount,
+            totalQueued: this.queue.length + crawledCount,
+            currentUrl,
+            statusCode,
+            speedPagesPerSec: speed,
+            elapsedSec: Math.round(elapsedSec),
+            status: "running"
+          });
+        }
+      };
+
+      const worker = async () => {
+        let emptyQueueRetries = 0;
+        while (!isDone && !this.isAborted) {
+          if (Object.keys(this.pages).length >= this.options.maxPages) {
             isDone = true;
             break;
           }
-          // Otherwise wait for other active workers to finish and potentially add links
-          await new Promise(res => setTimeout(res, 50));
-          continue;
-        }
 
-        const currentUrl = item.url;
-        if (this.visited.has(currentUrl)) continue;
-        this.visited.add(currentUrl);
+          const item = this.queue.shift();
+          if (!item) {
+            // If queue is temporarily empty:
+            // If no workers are fetching, count idle cycles up to ~2.25s (15 * 150ms) before declaring crawl done
+            if (activeFetchingCount === 0) {
+              emptyQueueRetries++;
+              if (emptyQueueRetries >= 15) {
+                isDone = true;
+                break;
+              }
+            } else {
+              emptyQueueRetries = 0;
+            }
+            await new Promise(res => setTimeout(res, 150));
+            continue;
+          }
 
-        activeFetchingCount++;
-        try {
-          await this.crawlSinglePage(currentUrl, item.depth, startMs, notifyProgress);
-        } catch {
-          // Error already recorded in crawlSinglePage
-        } finally {
-          activeFetchingCount--;
-        }
+          emptyQueueRetries = 0;
+          const currentUrl = item.url;
+          if (this.visited.has(currentUrl)) continue;
+          this.visited.add(currentUrl);
 
-        if (this.options.delayMs > 0) {
-          await new Promise(res => setTimeout(res, this.options.delayMs));
+          activeFetchingCount++;
+          try {
+            await this.crawlSinglePage(currentUrl, item.depth, startMs, notifyProgress);
+          } catch {
+            // Error already recorded in crawlSinglePage
+          } finally {
+            activeFetchingCount--;
+          }
+
+          if (this.options.delayMs > 0) {
+            await new Promise(res => setTimeout(res, this.options.delayMs));
+          }
         }
+      };
+
+      for (let i = 0; i < concurrency; i++) {
+        activeWorkers.push(worker());
       }
-    };
 
-    for (let i = 0; i < concurrency; i++) {
-      activeWorkers.push(worker());
+      await Promise.all(activeWorkers);
+
+      // 4. Build inlink graph across all pages
+      this.reconstructInlinks();
+
+      const durationMs = Date.now() - startMs;
+      const session: CrawlSession = {
+        id: sessionId,
+        rootUrl: this.options.url,
+        startTime,
+        endTime: new Date().toISOString(),
+        durationMs,
+        options: this.options,
+        pages: this.pages,
+        errors: this.errors
+      };
+
+      saveSession(session);
+
+      if (this.options.onProgress) {
+        const elapsedSec = Math.max(0.1, durationMs / 1000);
+        this.options.onProgress({
+          crawledCount: Object.keys(this.pages).length,
+          totalQueued: this.queue.length + Object.keys(this.pages).length,
+          currentUrl: this.isAborted ? "Đã dừng theo yêu cầu" : "Hoàn thành quét",
+          statusCode: 200,
+          speedPagesPerSec: Number((Object.keys(this.pages).length / elapsedSec).toFixed(1)),
+          elapsedSec: Math.round(elapsedSec),
+          status: this.isAborted ? "stopped" : "completed"
+        });
+      }
+
+      return session;
+    } finally {
+      this.running = false;
     }
-
-    await Promise.all(activeWorkers);
-
-    // 4. Build inlink graph across all pages
-    this.reconstructInlinks();
-
-    const durationMs = Date.now() - startMs;
-    const session: CrawlSession = {
-      id: sessionId,
-      rootUrl: this.options.url,
-      startTime,
-      endTime: new Date().toISOString(),
-      durationMs,
-      options: this.options,
-      pages: this.pages,
-      errors: this.errors
-    };
-
-    saveSession(session);
-
-    if (this.options.onProgress) {
-      const elapsedSec = Math.max(0.1, durationMs / 1000);
-      this.options.onProgress({
-        crawledCount: Object.keys(this.pages).length,
-        totalQueued: this.queue.length + Object.keys(this.pages).length,
-        currentUrl: this.isAborted ? "Đã dừng theo yêu cầu" : "Hoàn thành quét",
-        statusCode: 200,
-        speedPagesPerSec: Number((Object.keys(this.pages).length / elapsedSec).toFixed(1)),
-        elapsedSec: Math.round(elapsedSec),
-        status: this.isAborted ? "stopped" : "completed"
-      });
-    }
-
-    return session;
   }
 
   private async crawlSinglePage(
