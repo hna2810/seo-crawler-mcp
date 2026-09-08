@@ -377,7 +377,92 @@ const dupContentIssues = redirectAudit.issuesByCategory.content.filter(i => i.ty
 assert(dupContentIssues.length === 0, `Trang có chuyển hướng hoặc canonical không được tính là trùng lặp nội dung (mong muốn 0 lỗi, nhận được ${dupContentIssues.length})`);
 assert(redirectAudit.summary.duplicateContent === 0, "Summary duplicateContent phải bằng 0 khi đã có canonical/redirect");
 
+// 10. TEST STRICT ARTICLE FILTERING (EXCLUDING PAGINATION, ARCHIVES, LOGIN)
+console.log("\n--- 10. Testing Strict Article Filtering (Excluding Pagination, Archive, Login) ---");
+const { isNonArticleUrlOrTitle } = require("../src/crawler/extractor");
+
+// Test user specific cases from images
+assert(
+  isNonArticleUrlOrTitle("https://homecaresausinh.com/tin-tuc/page/1", "https://homecaresausinh.com/tin-tuc/page/1", "Lưu trữ Tin tức - Home Care - Dịch Vụ & Sản Phẩm") === true,
+  "Pagination page /tin-tuc/page/1 must NOT be recognized as an article"
+);
+
+assert(
+  isNonArticleUrlOrTitle("https://homecaresausinh.com/trung-tam-o-cu/page/1", "https://homecaresausinh.com/trung-tam-o-cu/page/1", "Lưu trữ Trung tâm ở cữ - Home Care - Dịch Vụ & Sản Phẩm") === true,
+  "Pagination page /trung-tam-o-cu/page/1 must NOT be recognized as an article"
+);
+
+assert(
+  isNonArticleUrlOrTitle(
+    "https://homecaresausinh.com/loginzek?redirect_to=https%3A%2F%2Fhomecaresausinh.com",
+    "https://homecaresausinh.com/loginzek?redirect_to=https%3A%2F%2Fhomecaresausinh.com",
+    "Tiếp tục ‹ Home Care – Dịch Vụ & Sản Phẩm"
+  ) === true,
+  "Login redirect URL /loginzek must NOT be recognized as an article"
+);
+
+assert(
+  isNonArticleUrlOrTitle(
+    "https://homecaresausinh.com/tin-tuc",
+    "https://homecaresausinh.com/tin-tuc/",
+    "Lưu trữ Tin tức - Home Care - Dịch Vụ & Sản Phẩm"
+  ) === true,
+  "Category archive root /tin-tuc must NOT be recognized as an article"
+);
+
+assert(
+  isNonArticleUrlOrTitle(
+    "https://homecaresausinh.com/dich-vu-tam-be-tai-nha-ha-noi-gia-bao-nhieu",
+    "https://homecaresausinh.com/dich-vu-tam-be-tai-nha-ha-noi-gia-bao-nhieu",
+    "Dịch vụ tắm bé tại nhà Hà Nội giá bao nhiêu?"
+  ) === false,
+  "Genuine post URL must be recognized as an article"
+);
+
+// Test Internal Links CSV export skips pagination and login pages
+const { generateInternalLinksCSV } = require("../src/utils/report");
+const testSessionWithArchives: any = {
+  id: "test_archive_filter",
+  rootUrl: "https://homecaresausinh.com",
+  startTime: new Date().toISOString(),
+  durationMs: 100,
+  options: {},
+  pages: {
+    "https://homecaresausinh.com/tin-tuc/page/1": {
+      url: "https://homecaresausinh.com/tin-tuc/page/1",
+      finalUrl: "https://homecaresausinh.com/tin-tuc/page/1",
+      statusCode: 200,
+      title: "Lưu trữ Tin tức - Home Care - Dịch Vụ & Sản Phẩm",
+      isArticle: false,
+      outlinks: [{ toUrl: "https://homecaresausinh.com/bai-1", anchorText: "Bài 1", isExternal: false }]
+    },
+    "https://homecaresausinh.com/loginzek?redirect_to=https%3A%2F%2Fhomecaresausinh.com": {
+      url: "https://homecaresausinh.com/loginzek?redirect_to=https%3A%2F%2Fhomecaresausinh.com",
+      finalUrl: "https://homecaresausinh.com/loginzek?redirect_to=https%3A%2F%2Fhomecaresausinh.com",
+      statusCode: 200,
+      title: "Tiếp tục ‹ Home Care – Dịch Vụ & Sản Phẩm",
+      isArticle: false,
+      outlinks: [{ toUrl: "https://homecaresausinh.com/quen-mat-khau", anchorText: "Quên mật khẩu", isExternal: false }]
+    },
+    "https://homecaresausinh.com/bai-viet-that": {
+      url: "https://homecaresausinh.com/bai-viet-that",
+      finalUrl: "https://homecaresausinh.com/bai-viet-that",
+      statusCode: 200,
+      title: "Hướng dẫn chăm sóc trẻ sơ sinh",
+      isArticle: true,
+      outlinks: [{ toUrl: "https://homecaresausinh.com/dich-vu-tam-be", anchorText: "tắm bé sơ sinh", isExternal: false }]
+    }
+  },
+  errors: []
+};
+
+const internalLinksOutput = generateInternalLinksCSV(testSessionWithArchives);
+assert(!internalLinksOutput.includes("tin-tuc/page/1"), "Internal Links CSV must NOT contain /tin-tuc/page/1 as source");
+assert(!internalLinksOutput.includes("loginzek"), "Internal Links CSV must NOT contain loginzek as source");
+assert(internalLinksOutput.includes("bai-viet-that"), "Internal Links CSV MUST contain real article bai-viet-that as source");
+
 console.log(`\n=========================================`);
 console.log(`TESTS FINISHED: ${passed}/${total} PASSED`);
 console.log(`=========================================`);
+
 

@@ -3,6 +3,7 @@ import { SEOAuditReport } from "../analyzer/seoAudit";
 import { SiteStructureAnalysis } from "../analyzer/siteTree";
 import { ContentRatioReport } from "../classifier/contentRatio";
 import { ClassificationResult, SiteNode } from "../crawler/types";
+import { isNonArticleUrlOrTitle } from "../crawler/extractor";
 import ExcelJS from "exceljs";
 // @ts-ignore
 import { addChart } from "chartsheet";
@@ -67,6 +68,7 @@ export function generateArticlesCSV(
   const rows: string[] = [headers.map(escapeCSV).join(",")];
 
   for (const page of Object.values(session.pages)) {
+    if (page.isArticle === false || page.url === session.rootUrl || isNonArticleUrlOrTitle(page.url, page.finalUrl, page.title)) continue;
     const classif = classificationByUrl.get(page.url);
     const issues = issuesByUrl[page.url] || [];
     const urlEval = page.url.length <= 60 ? "Tốt (<=60 ký tự)" : "CẢNH BÁO (>60 ký tự)";
@@ -217,7 +219,7 @@ export function generateInternalLinksCSV(session: CrawlSession): string {
 
   let index = 1;
   for (const page of Object.values(session.pages)) {
-    if (page.isArticle === false || page.url === session.rootUrl) continue;
+    if (page.isArticle === false || page.url === session.rootUrl || isNonArticleUrlOrTitle(page.url, page.finalUrl, page.title)) continue;
     if (!page.outlinks || page.outlinks.length === 0) continue;
 
     for (const outlink of page.outlinks) {
@@ -851,6 +853,7 @@ export async function generateComprehensiveExcelWorkbook(
 
   let s4RowIdx = 3;
   Object.values(session.pages).forEach((p, pIdx) => {
+    if (p.isArticle === false || p.url === session.rootUrl || isNonArticleUrlOrTitle(p.url, p.finalUrl, p.title)) return;
     const cl = classifMap.get(p.url);
     const iss = issuesByUrl[p.url] || [];
     const isUrlTooLong = p.url.length > 60;
@@ -994,8 +997,8 @@ export async function generateComprehensiveExcelWorkbook(
   const anchorCountMap: Record<string, number> = {};
 
   for (const page of Object.values(session.pages)) {
-    // Only articles (exclude utility pages and root homepage)
-    if (page.isArticle === false || page.url === session.rootUrl) continue;
+    // Only articles (exclude utility pages, archives, login, and root homepage)
+    if (page.isArticle === false || page.url === session.rootUrl || isNonArticleUrlOrTitle(page.url, page.finalUrl, page.title)) continue;
     if (!page.outlinks || page.outlinks.length === 0) continue;
 
     for (const outlink of page.outlinks) {

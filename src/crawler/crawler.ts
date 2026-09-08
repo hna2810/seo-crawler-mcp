@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from "axios";
 import https from "https";
 import http from "http";
 import { CrawlOptions, PageData, Inlink } from "./types";
-import { extractPageData } from "./extractor";
+import { extractPageData, isNonArticleUrlOrTitle } from "./extractor";
 import { fetchRobotsTxt, discoverSitemapUrls, fetchSitemapUrls } from "./sitemap";
 import { CrawlSession, saveSession } from "./session";
 
@@ -107,6 +107,14 @@ export class WebsiteCrawler {
         if (nonHtmlExts.includes(ext)) {
           return false;
         }
+      }
+
+      // Exclude login, admin, and authentication URLs
+      if (/(wp-login|wp-admin|loginzek|dang-nhap|lost-password|reset-password)/i.test(u.pathname)) {
+        return false;
+      }
+      if (/[?&](redirect_to|replytocom|action=logout|action=lostpassword)/i.test(u.search)) {
+        return false;
       }
 
       return true;
@@ -407,6 +415,10 @@ export class WebsiteCrawler {
           pageData.isSoft404 = true;
           pageData.isArticle = false;
         }
+      }
+
+      if (isNonArticleUrlOrTitle(targetUrl, finalUrl, pageData.title)) {
+        pageData.isArticle = false;
       }
 
       this.pages[targetUrl] = pageData;

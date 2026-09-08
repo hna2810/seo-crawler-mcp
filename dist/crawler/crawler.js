@@ -104,6 +104,13 @@ class WebsiteCrawler {
                     return false;
                 }
             }
+            // Exclude login, admin, and authentication URLs
+            if (/(wp-login|wp-admin|loginzek|dang-nhap|lost-password|reset-password)/i.test(u.pathname)) {
+                return false;
+            }
+            if (/[?&](redirect_to|replytocom|action=logout|action=lostpassword)/i.test(u.search)) {
+                return false;
+            }
             return true;
         }
         catch {
@@ -363,6 +370,9 @@ class WebsiteCrawler {
                     pageData.isSoft404 = true;
                     pageData.isArticle = false;
                 }
+            }
+            if ((0, extractor_1.isNonArticleUrlOrTitle)(targetUrl, finalUrl, pageData.title)) {
+                pageData.isArticle = false;
             }
             this.pages[targetUrl] = pageData;
             // Queue new internal links (using discoveryLinks from full HTML to discover site pages)

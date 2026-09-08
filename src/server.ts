@@ -3,6 +3,7 @@ import path from "path";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { createMcpServer } from "./mcp";
 import { WebsiteCrawler } from "./crawler/crawler";
+import { isNonArticleUrlOrTitle } from "./crawler/extractor";
 import { getSession, getLatestSessionId, listSessions } from "./crawler/session";
 import { performSEOAudit } from "./analyzer/seoAudit";
 import { buildSiteStructure } from "./analyzer/siteTree";
@@ -197,7 +198,9 @@ app.post("/api/crawl", async (req, res) => {
 
     const audit = performSEOAudit(session.pages);
     const structure = buildSiteStructure(session.pages, session.rootUrl);
-    const classifications = Object.values(session.pages).map(p => classifyPage(p));
+    const classifications = Object.values(session.pages)
+      .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !isNonArticleUrlOrTitle(p.url, p.finalUrl, p.title))
+      .map(p => classifyPage(p));
     const contentRatio = computeContentRatio(classifications);
 
     analysisCache.set(session.id, { session, audit, structure, contentRatio, classifications });
@@ -284,7 +287,9 @@ function getSessionAnalysis(sessionIdOrRaw?: string) {
 
   const audit = performSEOAudit(session.pages);
   const structure = buildSiteStructure(session.pages, session.rootUrl);
-  const classifications = Object.values(session.pages).map(p => classifyPage(p));
+  const classifications = Object.values(session.pages)
+    .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !isNonArticleUrlOrTitle(p.url, p.finalUrl, p.title))
+    .map(p => classifyPage(p));
   const contentRatio = computeContentRatio(classifications);
 
   const result = { session, audit, structure, contentRatio, classifications };

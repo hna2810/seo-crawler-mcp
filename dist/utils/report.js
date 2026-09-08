@@ -10,6 +10,7 @@ exports.generateInternalLinksCSV = generateInternalLinksCSV;
 exports.generateMarkdownReport = generateMarkdownReport;
 exports.flattenSiteTreeForReport = flattenSiteTreeForReport;
 exports.generateComprehensiveExcelWorkbook = generateComprehensiveExcelWorkbook;
+const extractor_1 = require("../crawler/extractor");
 const exceljs_1 = __importDefault(require("exceljs"));
 // @ts-ignore
 const chartsheet_1 = require("chartsheet");
@@ -66,6 +67,8 @@ function generateArticlesCSV(session, audit, classifications) {
     ];
     const rows = [headers.map(escapeCSV).join(",")];
     for (const page of Object.values(session.pages)) {
+        if (page.isArticle === false || page.url === session.rootUrl || (0, extractor_1.isNonArticleUrlOrTitle)(page.url, page.finalUrl, page.title))
+            continue;
         const classif = classificationByUrl.get(page.url);
         const issues = issuesByUrl[page.url] || [];
         const urlEval = page.url.length <= 60 ? "Tốt (<=60 ký tự)" : "CẢNH BÁO (>60 ký tự)";
@@ -195,7 +198,7 @@ function generateInternalLinksCSV(session) {
     }
     let index = 1;
     for (const page of Object.values(session.pages)) {
-        if (page.isArticle === false || page.url === session.rootUrl)
+        if (page.isArticle === false || page.url === session.rootUrl || (0, extractor_1.isNonArticleUrlOrTitle)(page.url, page.finalUrl, page.title))
             continue;
         if (!page.outlinks || page.outlinks.length === 0)
             continue;
@@ -744,6 +747,8 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
     });
     let s4RowIdx = 3;
     Object.values(session.pages).forEach((p, pIdx) => {
+        if (p.isArticle === false || p.url === session.rootUrl || (0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
+            return;
         const cl = classifMap.get(p.url);
         const iss = issuesByUrl[p.url] || [];
         const isUrlTooLong = p.url.length > 60;
@@ -871,8 +876,8 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
     const internalLinksList = [];
     const anchorCountMap = {};
     for (const page of Object.values(session.pages)) {
-        // Only articles (exclude utility pages and root homepage)
-        if (page.isArticle === false || page.url === session.rootUrl)
+        // Only articles (exclude utility pages, archives, login, and root homepage)
+        if (page.isArticle === false || page.url === session.rootUrl || (0, extractor_1.isNonArticleUrlOrTitle)(page.url, page.finalUrl, page.title))
             continue;
         if (!page.outlinks || page.outlinks.length === 0)
             continue;

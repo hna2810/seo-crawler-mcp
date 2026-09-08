@@ -8,6 +8,7 @@ const path_1 = __importDefault(require("path"));
 const sse_js_1 = require("@modelcontextprotocol/sdk/server/sse.js");
 const mcp_1 = require("./mcp");
 const crawler_1 = require("./crawler/crawler");
+const extractor_1 = require("./crawler/extractor");
 const session_1 = require("./crawler/session");
 const seoAudit_1 = require("./analyzer/seoAudit");
 const siteTree_1 = require("./analyzer/siteTree");
@@ -163,7 +164,9 @@ app.post("/api/crawl", async (req, res) => {
         activeCrawler = null;
         const audit = (0, seoAudit_1.performSEOAudit)(session.pages);
         const structure = (0, siteTree_1.buildSiteStructure)(session.pages, session.rootUrl);
-        const classifications = Object.values(session.pages).map(p => (0, topicClassifier_1.classifyPage)(p));
+        const classifications = Object.values(session.pages)
+            .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
+            .map(p => (0, topicClassifier_1.classifyPage)(p));
         const contentRatio = (0, contentRatio_1.computeContentRatio)(classifications);
         analysisCache.set(session.id, { session, audit, structure, contentRatio, classifications });
         const fullResult = {
@@ -237,7 +240,9 @@ function getSessionAnalysis(sessionIdOrRaw) {
         return null;
     const audit = (0, seoAudit_1.performSEOAudit)(session.pages);
     const structure = (0, siteTree_1.buildSiteStructure)(session.pages, session.rootUrl);
-    const classifications = Object.values(session.pages).map(p => (0, topicClassifier_1.classifyPage)(p));
+    const classifications = Object.values(session.pages)
+        .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
+        .map(p => (0, topicClassifier_1.classifyPage)(p));
     const contentRatio = (0, contentRatio_1.computeContentRatio)(classifications);
     const result = { session, audit, structure, contentRatio, classifications };
     analysisCache.set(sessionId, result);

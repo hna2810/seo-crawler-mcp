@@ -34,6 +34,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.extractPageData = extractPageData;
+exports.isNonArticleUrlOrTitle = isNonArticleUrlOrTitle;
+exports.checkIfArticlePage = checkIfArticlePage;
 const cheerio = __importStar(require("cheerio"));
 const text_1 = require("../utils/text");
 function extractPageData(html, url, finalUrl, statusCode, contentType, crawlTimeMs, depth, baseDomain) {
@@ -168,21 +170,8 @@ function extractPageData(html, url, finalUrl, statusCode, contentType, crawlTime
             // Invalid URL
         }
     });
-    // Determine if this is an article/post vs utility/functional page
-    let isArticle = true;
-    try {
-        const parsed = new URL(finalUrl);
-        const p = parsed.pathname.toLowerCase();
-        if (p === "/" ||
-            p === "" ||
-            /\/(gio-hang|cart|checkout|thanh-toan|tai-khoan|my-account|lien-he|contact|showroom|cua-hang|shop|sitemap.*|tim-kiem|search|login|dang-nhap|wp-.*|\.xml)$/i.test(p) ||
-            /(\/category\/|\/tag\/|\/author\/|\/page\/|\/collections\/)/i.test(p)) {
-            isArticle = false;
-        }
-    }
-    catch {
-        isArticle = false;
-    }
+    // Determine if this is an article/post vs utility/archive/login/functional page
+    const isArticle = checkIfArticlePage(url, finalUrl, statusCode, title, $);
     // 6. Publication & Modified Dates (Ngày đăng bài & Ngày cập nhật gần nhất)
     let rawPublished = $('meta[property="article:published_time"]').attr("content") ||
         $('meta[name="article:published_time"]').attr("content") ||
@@ -277,4 +266,132 @@ function formatDateTime(str) {
     }
     catch { }
     return str.slice(0, 19).replace("T", " ");
+}
+/**
+ * Robust filter to identify URLs or Titles that are definitely NOT single articles:
+ * - Pagination (/page/1, /page/2, ?paged=1)
+ * - Category / Taxonomy / Tag / Author / Archives (/category/, /tag/, /chuyen-muc/, /luu-tru/)
+ * - WordPress archive titles ("Lưu trữ Tin tức...", "Chuyên mục: ...")
+ * - Login / Admin / Security login custom slugs (loginzek, wp-login, ?redirect_to=)
+ * - WordPress login titles ("Tiếp tục ‹ Home Care...", "Đăng nhập")
+ * - Utility, Cart, Checkout, Policies, Contact, Search, Homepage
+ * - Category root landing pages (/tin-tuc/, /blog/, /dich-vu/, /san-pham/)
+ */
+function isNonArticleUrlOrTitle(url, finalUrl, title) {
+    const tLower = (title || "").toLowerCase().trim();
+    // 1. Title checks (Archive, Category, Tag, Author, Login, Homepage, Soft 404)
+    if (tLower.startsWith("lưu trữ") ||
+        tLower.includes(" - lưu trữ") ||
+        tLower.includes(" | lưu trữ") ||
+        tLower.startsWith("archives:") ||
+        tLower.startsWith("archive:") ||
+        tLower.startsWith("chuyên mục:") ||
+        tLower.startsWith("category:") ||
+        tLower.startsWith("thẻ:") ||
+        tLower.startsWith("tag:") ||
+        tLower.startsWith("tác giả:") ||
+        tLower.startsWith("author:") ||
+        tLower.startsWith("danh mục:") ||
+        tLower.includes("kết quả tìm kiếm") ||
+        tLower.startsWith("tiếp tục ‹") ||
+        tLower.startsWith("tiếp tục <") ||
+        tLower.startsWith("đăng nhập") ||
+        tLower.startsWith("log in") ||
+        tLower.includes("quên mật khẩu") ||
+        tLower.startsWith("trang chủ") ||
+        tLower === "trang chủ" ||
+        tLower.includes("404 not found") ||
+        tLower.includes("không tìm thấy trang") ||
+        tLower.includes("trang không tồn tại")) {
+        return true;
+    }
+    // 2. URL checks on both requested url and final redirected url
+    const urlsToCheck = [url, finalUrl].filter((u) => Boolean(u));
+    for (const uStr of urlsToCheck) {
+        try {
+            const parsed = new URL(uStr);
+            const p = parsed.pathname.toLowerCase();
+            const q = parsed.search.toLowerCase();
+            // Root homepage
+            if (p === "/" || p === "")
+                return true;
+            // Pagination anywhere in path or query (e.g. /page/1, /page/2, /tin-tuc/page/1, ?paged=1)
+            if (/\/page\/\d+/i.test(p) || /\/page\/?$/i.test(p) || /[?&]paged?=\d+/i.test(q)) {
+                return true;
+            }
+            // Categories, Tags, Authors, Archives
+            if (/(\/category\/|\/chuyen-muc\/|\/danh-muc\/|\/chu-de\/|\/tag\/|\/the\/|\/tu-khoa\/|\/author\/|\/tac-gia\/|\/archives?\/|\/luu-tru\/|\/collections?\/)/i.test(p)) {
+                return true;
+            }
+            // Login, Admin, Security login slugs (loginzek, wp-login, etc.)
+            if (/(login|dang-nhap|wp-login|wp-admin|lost-password|quen-mat-khau|reset-password)/i.test(p) ||
+                /[?&](redirect_to|replytocom|action=logout|action=lostpassword)/i.test(q)) {
+                return true;
+            }
+            // Functional, Cart, Checkout, Policies, Utilities
+            if (/\/(gio-hang|cart|checkout|thanh-toan|don-hang|order|tai-khoan|my-account|wishlist|lien-he|contact|showroom|cua-hang|shop|store|he-thong-cua-hang|gioi-thieu|about|ve-chung-toi|chinh-sach.*|policy.*|dieu-khoan.*|terms.*|quy-dinh.*|bao-mat|sitemap.*|tim-kiem|search|feed|rss)(\/|$)/i.test(p)) {
+                return true;
+            }
+            // Root category landing pages without article slug (e.g. /tin-tuc, /tin-tuc/, /blog, /dich-vu, /trung-tam-o-cu)
+            const segments = p.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+            if (segments.length === 1 &&
+                ["tin-tuc", "blog", "news", "bai-viet", "dich-vu", "san-pham", "trung-tam-o-cu", "kien-thuc", "cam-nang"].includes(segments[0])) {
+                return true;
+            }
+        }
+        catch {
+            return true;
+        }
+    }
+    return false;
+}
+function checkIfArticlePage(url, finalUrl, statusCode, title, $) {
+    // 1. Status code check: only 200 OK can be an article
+    if (statusCode !== 200) {
+        return false;
+    }
+    // 2. URL or Title indicators of non-articles
+    if (isNonArticleUrlOrTitle(url, finalUrl, title)) {
+        return false;
+    }
+    // 3. HTML Body Classes & Structure (WordPress & CMS specific)
+    const bodyClass = ($("body").attr("class") || "").toLowerCase();
+    if (bodyClass) {
+        const nonArticleClasses = [
+            "archive",
+            "category",
+            "tag",
+            "tax-",
+            "post-type-archive",
+            "author",
+            "blog",
+            "paged",
+            "search",
+            "login",
+            "error404",
+            "woocommerce-cart",
+            "woocommerce-checkout",
+            "woocommerce-account"
+        ];
+        const classList = bodyClass.split(/\s+/);
+        for (const c of nonArticleClasses) {
+            if (classList.some((cls) => cls === c || cls.startsWith(c))) {
+                return false;
+            }
+        }
+    }
+    // Login form presence
+    if ($("#loginform").length > 0 || $('form[name="loginform"]').length > 0 || $('input[name="log"]').length > 0) {
+        return false;
+    }
+    // If body has single post class, it's definitely an article
+    if (bodyClass.includes("single-post") || bodyClass.includes("postid-")) {
+        return true;
+    }
+    // OpenGraph Type validation
+    const ogType = ($('meta[property="og:type"]').attr("content") || "").toLowerCase().trim();
+    if (ogType === "article") {
+        return true;
+    }
+    return true;
 }

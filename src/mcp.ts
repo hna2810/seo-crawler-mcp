@@ -12,6 +12,7 @@ import { getSession, listSessions, getLatestSessionId } from "./crawler/session"
 import { performSEOAudit } from "./analyzer/seoAudit";
 import { buildSiteStructure } from "./analyzer/siteTree";
 import { classifyPage, classifyContent } from "./classifier/topicClassifier";
+import { isNonArticleUrlOrTitle } from "./crawler/extractor";
 import { computeContentRatio } from "./classifier/contentRatio";
 import { generateMarkdownReport } from "./utils/report";
 import { MOTHER_BABY_TAXONOMY, CONTEXT_LIST, LOCATION_LIST } from "./config/taxonomy";
@@ -247,7 +248,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         // Perform instant quick summary
         const audit = performSEOAudit(session.pages);
-        const classifications = Object.values(session.pages).map(p => classifyPage(p));
+        const classifications = Object.values(session.pages)
+          .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !isNonArticleUrlOrTitle(p.url, p.finalUrl, p.title))
+          .map(p => classifyPage(p));
         const contentRatio = computeContentRatio(classifications);
 
         const summaryText = [
@@ -373,7 +376,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
 
         const topicFilter = (args as any)?.topicFilter?.toLowerCase();
-        let classifications = Object.values(session.pages).map(p => classifyPage(p));
+        let classifications = Object.values(session.pages)
+          .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !isNonArticleUrlOrTitle(p.url, p.finalUrl, p.title))
+          .map(p => classifyPage(p));
 
         if (topicFilter) {
           classifications = classifications.filter(c => c.topic.toLowerCase().includes(topicFilter));
@@ -459,7 +464,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const audit = performSEOAudit(session.pages);
         const structure = buildSiteStructure(session.pages, session.rootUrl);
-        const classifications = Object.values(session.pages).map(p => classifyPage(p));
+        const classifications = Object.values(session.pages)
+          .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !isNonArticleUrlOrTitle(p.url, p.finalUrl, p.title))
+          .map(p => classifyPage(p));
         const contentRatio = computeContentRatio(classifications);
 
         const format = (args as any)?.format || "markdown";

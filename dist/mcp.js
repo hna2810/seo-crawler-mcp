@@ -12,6 +12,7 @@ const session_1 = require("./crawler/session");
 const seoAudit_1 = require("./analyzer/seoAudit");
 const siteTree_1 = require("./analyzer/siteTree");
 const topicClassifier_1 = require("./classifier/topicClassifier");
+const extractor_1 = require("./crawler/extractor");
 const contentRatio_1 = require("./classifier/contentRatio");
 const report_1 = require("./utils/report");
 const taxonomy_1 = require("./config/taxonomy");
@@ -229,7 +230,9 @@ function createMcpServer() {
                     const pageCount = Object.keys(session.pages).length;
                     // Perform instant quick summary
                     const audit = (0, seoAudit_1.performSEOAudit)(session.pages);
-                    const classifications = Object.values(session.pages).map(p => (0, topicClassifier_1.classifyPage)(p));
+                    const classifications = Object.values(session.pages)
+                        .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
+                        .map(p => (0, topicClassifier_1.classifyPage)(p));
                     const contentRatio = (0, contentRatio_1.computeContentRatio)(classifications);
                     const summaryText = [
                         `Đã hoàn thành quét website: ${url}`,
@@ -343,7 +346,9 @@ function createMcpServer() {
                         };
                     }
                     const topicFilter = args?.topicFilter?.toLowerCase();
-                    let classifications = Object.values(session.pages).map(p => (0, topicClassifier_1.classifyPage)(p));
+                    let classifications = Object.values(session.pages)
+                        .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
+                        .map(p => (0, topicClassifier_1.classifyPage)(p));
                     if (topicFilter) {
                         classifications = classifications.filter(c => c.topic.toLowerCase().includes(topicFilter));
                     }
@@ -418,7 +423,9 @@ function createMcpServer() {
                     }
                     const audit = (0, seoAudit_1.performSEOAudit)(session.pages);
                     const structure = (0, siteTree_1.buildSiteStructure)(session.pages, session.rootUrl);
-                    const classifications = Object.values(session.pages).map(p => (0, topicClassifier_1.classifyPage)(p));
+                    const classifications = Object.values(session.pages)
+                        .filter(p => p.isArticle !== false && p.url !== session.rootUrl && !(0, extractor_1.isNonArticleUrlOrTitle)(p.url, p.finalUrl, p.title))
+                        .map(p => (0, topicClassifier_1.classifyPage)(p));
                     const contentRatio = (0, contentRatio_1.computeContentRatio)(classifications);
                     const format = args?.format || "markdown";
                     if (format === "json") {
