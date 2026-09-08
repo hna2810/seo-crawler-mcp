@@ -461,6 +461,83 @@ assert(!internalLinksOutput.includes("tin-tuc/page/1"), "Internal Links CSV must
 assert(!internalLinksOutput.includes("loginzek"), "Internal Links CSV must NOT contain loginzek as source");
 assert(internalLinksOutput.includes("bai-viet-that"), "Internal Links CSV MUST contain real article bai-viet-that as source");
 
+// 11. TEST STRICT BREADCRUMB EXCLUSION FROM IN-CONTENT LINKS
+console.log("\n--- 11. Testing Strict Breadcrumb Exclusion from In-Content Links ---");
+const pageWithBreadcrumbHtml = `
+<!DOCTYPE html>
+<html>
+<head><title>Sản dịch sau sinh có nguy hiểm cho mẹ không?</title></head>
+<body>
+  <main id="main">
+    <div class="zek_page_body">
+      <div class="container">
+        <div class="zek_breadcrum">
+          <div id="breadcrumbs">
+            <span>
+              <span>
+                <a href="https://homecaresausinh.com/">Trang chủ</a> / 
+                <a href="https://homecaresausinh.com/tin-tuc/">Tin tức</a> / 
+                <a href="https://homecaresausinh.com/tin-tuc/chia-se-tu-van/">Chia Sẻ & Tư Vấn</a> / 
+                <span class="breadcrumb_last">Sản dịch sau sinh có nguy hiểm cho mẹ không?</span>
+              </span>
+            </span>
+          </div>
+        </div>
+        <div class="zek_content">
+          <h1>Sản dịch sau sinh có nguy hiểm cho mẹ không?</h1>
+          <div id="toc_container" class="ez-toc-container">
+            <span class="ez-toc-title">Mục Lục</span>
+            <ul>
+              <li><a href="#san-dich-la-gi">1. Sản dịch sau sinh là gì?</a></li>
+              <li><a href="#khi-nao-het">2. Sau khi sinh bao lâu thì hết?</a></li>
+            </ul>
+          </div>
+          <p>Sản dịch là dịch từ buồng tử cung và bộ phận sinh dục chảy ra sau khi mẹ hoàn thành ca sinh...</p>
+          <p>Để hồi phục tốt, các mẹ có thể tham khảo <a href="https://homecaresausinh.com/dich-vu-cham-soc-me-sau-sinh">dịch vụ chăm sóc mẹ sau sinh tại nhà</a> rất uy tín.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
+`;
+
+const parsedPostData = extractPageData(
+  pageWithBreadcrumbHtml,
+  "https://homecaresausinh.com/san-dich-sau-sinh-co-nguy-hiem-cho-me-khong",
+  "https://homecaresausinh.com/san-dich-sau-sinh-co-nguy-hiem-cho-me-khong",
+  200,
+  "text/html",
+  50,
+  1,
+  "homecaresausinh.com"
+);
+
+assert(
+  !parsedPostData.outlinks.some((l: any) => l.anchorText.toLowerCase().includes("trang chủ")),
+  "Outlinks must NOT contain breadcrumb 'Trang chủ'"
+);
+assert(
+  !parsedPostData.outlinks.some((l: any) => l.anchorText.toLowerCase().includes("tin tức")),
+  "Outlinks must NOT contain breadcrumb 'Tin tức'"
+);
+assert(
+  !parsedPostData.outlinks.some((l: any) => l.anchorText.toLowerCase().includes("chia sẻ & tư vấn")),
+  "Outlinks must NOT contain breadcrumb 'Chia Sẻ & Tư Vấn'"
+);
+assert(
+  !parsedPostData.outlinks.some((l: any) => l.toUrl.includes("#san-dich-la-gi")),
+  "Outlinks must NOT contain Table of Contents hash link"
+);
+assert(
+  parsedPostData.outlinks.some((l: any) => l.toUrl === "https://homecaresausinh.com/dich-vu-cham-soc-me-sau-sinh"),
+  "Outlinks MUST contain legitimate in-content internal link"
+);
+assert(
+  parsedPostData.totalInternalLinks === 1,
+  `Total internal links should be exactly 1, got ${parsedPostData.totalInternalLinks}`
+);
+
 console.log(`\n=========================================`);
 console.log(`TESTS FINISHED: ${passed}/${total} PASSED`);
 console.log(`=========================================`);

@@ -104,11 +104,13 @@ export function extractPageData(
   const $articleTarget = $("article, .entry-content, .post-content, .single-post-content, .content-detail, .post-detail, .td-post-content, main, #main, #content").first();
   let $articleContainer = $articleTarget.length > 0 ? $articleTarget.clone() : $("body").clone();
 
-  // Remove boilerplate from the container clone
+  // Remove boilerplate & non-content elements from the container clone
   $articleContainer.find(
     "script, style, nav, footer, header, aside, form, svg, noscript, iframe, button, " +
     ".header, .footer, .site-header, .site-footer, .main-navigation, .menu, .navbar, .nav, " +
-    ".sidebar, #sidebar, .widget, #comments, .comments-area, .breadcrumbs, .breadcrumb, " +
+    ".sidebar, #sidebar, .widget, #comments, .comments-area, " +
+    "[class*='bread' i], [id*='bread' i], [aria-label*='bread' i], [itemtype*='BreadcrumbList' i], [itemprop='breadcrumb' i], .trail-items, " +
+    ".ez-toc-container, #toc_container, .toc_container, .lwptoc, .table-of-contents, .toc, .post-toc, " +
     ".social-share, .share-box, .related-posts, .author-box, .elementor-location-header, .elementor-location-footer"
   ).remove();
 
@@ -117,7 +119,9 @@ export function extractPageData(
     $articleContainer.find(
       "script, style, nav, footer, header, aside, form, svg, noscript, iframe, button, " +
       ".header, .footer, .site-header, .site-footer, .main-navigation, .menu, .navbar, .nav, " +
-      ".sidebar, #sidebar, .widget, #comments, .comments-area, .breadcrumbs, .breadcrumb, " +
+      ".sidebar, #sidebar, .widget, #comments, .comments-area, " +
+      "[class*='bread' i], [id*='bread' i], [aria-label*='bread' i], [itemtype*='BreadcrumbList' i], [itemprop='breadcrumb' i], .trail-items, " +
+      ".ez-toc-container, #toc_container, .toc_container, .lwptoc, .table-of-contents, .toc, .post-toc, " +
       ".social-share, .share-box, .related-posts, .author-box, .elementor-location-header, .elementor-location-footer"
     ).remove();
   }
@@ -125,7 +129,7 @@ export function extractPageData(
   const cleanMainText = cleanText($articleContainer.text());
   const wordCount = countWords(cleanMainText);
 
-  // 6. In-Content Links & Anchor text (CHỈ tính trong phần nội dung bài viết, KHÔNG tính header/footer)
+  // 6. In-Content Links & Anchor text (CHỈ tính trong phần nội dung bài viết, KHÔNG tính header/footer/breadcrumb)
   const outlinks: Outlink[] = [];
   let totalInternalLinks = 0;
   let totalExternalLinks = 0;
@@ -143,6 +147,16 @@ export function extractPageData(
       return;
     }
 
+    // Exclude any link that is part of a breadcrumb or TOC
+    if (
+      $(el).closest(
+        "[class*='bread' i], [id*='bread' i], [aria-label*='bread' i], [itemtype*='BreadcrumbList' i], [itemprop='breadcrumb' i], .trail-items, " +
+        ".ez-toc-container, #toc_container, .toc_container, .lwptoc, .table-of-contents, .toc, .post-toc"
+      ).length > 0
+    ) {
+      return;
+    }
+
     try {
       const resolved = new URL(rawHref, finalUrl);
       // Only http / https
@@ -153,7 +167,28 @@ export function extractPageData(
       // Remove hash
       resolved.hash = "";
       const toUrl = resolved.toString();
+
+      // Exclude self links (links pointing back to the same page)
+      if (toUrl === finalUrl || toUrl === url) {
+        return;
+      }
+
       const anchorText = cleanText($(el).text());
+      const lowerAnchor = anchorText.toLowerCase();
+
+      // Exclude common breadcrumb navigation texts
+      if (
+        lowerAnchor === "trang chủ" ||
+        lowerAnchor === "trang chu" ||
+        lowerAnchor === "home" ||
+        lowerAnchor === "tin tức" ||
+        lowerAnchor === "tin tuc" ||
+        lowerAnchor === "chia sẻ & tư vấn" ||
+        lowerAnchor === "chia se & tu van"
+      ) {
+        return;
+      }
+
       const isExternal = resolved.hostname !== baseDomain && !resolved.hostname.endsWith("." + baseDomain);
 
       if (isExternal) {

@@ -205,6 +205,19 @@ function generateInternalLinksCSV(session) {
         for (const outlink of page.outlinks) {
             if (outlink.isExternal)
                 continue;
+            const anchor = (outlink.anchorText || "").trim();
+            const lowerAnchor = anchor.toLowerCase();
+            // Exclude breadcrumb links
+            if (lowerAnchor === "trang chủ" ||
+                lowerAnchor === "trang chu" ||
+                lowerAnchor === "home" ||
+                lowerAnchor === "tin tức" ||
+                lowerAnchor === "tin tuc" ||
+                lowerAnchor === "chia sẻ & tư vấn" ||
+                lowerAnchor === "chia se & tu van" ||
+                outlink.toUrl === session.rootUrl) {
+                continue;
+            }
             const destPage = pageLookup.get(outlink.toUrl);
             rows.push([
                 index++,
@@ -885,6 +898,18 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
             if (outlink.isExternal)
                 continue;
             const anchor = (outlink.anchorText || "").trim() || "(Không có anchor text)";
+            const lowerAnchor = anchor.toLowerCase();
+            // Exclude breadcrumb links
+            if (lowerAnchor === "trang chủ" ||
+                lowerAnchor === "trang chu" ||
+                lowerAnchor === "home" ||
+                lowerAnchor === "tin tức" ||
+                lowerAnchor === "tin tuc" ||
+                lowerAnchor === "chia sẻ & tư vấn" ||
+                lowerAnchor === "chia se & tu van" ||
+                outlink.toUrl === session.rootUrl) {
+                continue;
+            }
             let destPage = pageLookup.get(outlink.toUrl);
             if (!destPage) {
                 try {
