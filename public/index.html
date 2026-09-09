@@ -1129,6 +1129,12 @@
                 <input type="password" id="gads-refresh-token" placeholder="Refresh Token của tài khoản Google Ads" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] outline-none">
               </div>
 
+              <div class="text-right pt-0.5">
+                <a href="#gads-api-guide" class="text-[11px] text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 font-semibold">
+                  <i class="fa-solid fa-circle-question text-blue-500"></i> Xem hướng dẫn lấy 6 mã này ở dưới trang &darr;
+                </a>
+              </div>
+
               <div class="flex gap-2 pt-1">
                 <button type="button" onclick="testGoogleAdsConfig()" id="btn-test-gads" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all flex items-center justify-center gap-1 text-[11px]">
                   <i class="fa-solid fa-plug"></i> Kiểm Tra Kết Nối
@@ -1142,6 +1148,12 @@
             <div class="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 leading-relaxed">
               <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i>
               <strong>Mẹo:</strong> Nếu bạn chưa có sẵn Developer Token Google Ads đã duyệt (thường mất thời gian đăng ký), hãy để <strong>"Chế độ Dự toán Thông minh"</strong> để hệ thống tự động sinh dữ liệu Search Volume & giá thầu sát thực tế ngay lập tức!
+              <div class="mt-2.5 pt-2 border-t border-amber-200/70 flex items-center justify-between">
+                <span class="font-semibold text-amber-950">Chưa biết cách lấy các mã trên?</span>
+                <a href="#gads-api-guide" class="text-blue-600 hover:text-blue-800 font-bold hover:underline inline-flex items-center gap-1">
+                  <i class="fa-solid fa-book-open"></i> Xem hướng dẫn chi tiết ở dưới trang &darr;
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -1294,6 +1306,248 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+      </div>
+
+      <!-- HƯỚNG DẪN CHI TIẾT CÁCH LẤY 6 MÃ GOOGLE ADS API -->
+      <div id="gads-api-guide" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6 scroll-mt-6">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-150 pb-4">
+          <div class="space-y-1">
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2.5">
+              <span class="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-black shadow-sm">
+                <i class="fa-solid fa-book-open"></i>
+              </span>
+              Hướng Dẫn Chi Tiết Cách Lấy 6 Thông Số Google Ads API
+            </h3>
+            <p class="text-xs text-slate-500">
+              Thực hiện theo 4 bước bên dưới để kết nối dữ liệu chính thức từ <strong>Google Keyword Planner</strong>.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-shield-check text-emerald-500"></i> Cấu hình 1 lần - Tự động lưu
+            </span>
+            <a href="#tab-keywords" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg transition-colors inline-flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up"></i> Về khung cấu hình
+            </a>
+          </div>
+        </div>
+
+        <!-- Lưu ý nhanh -->
+        <div class="p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200 rounded-xl text-xs text-blue-950 space-y-1.5">
+          <div class="font-bold flex items-center gap-2 text-blue-900">
+            <i class="fa-solid fa-lightbulb text-amber-500 text-sm"></i>
+            Bạn chưa có Developer Token hoặc không muốn cài đặt phức tạp?
+          </div>
+          <p class="leading-relaxed text-slate-700 text-[11px]">
+            Ở khung cấu hình phía trên, chọn <strong>"Chế độ Dự toán Thông minh"</strong>. Bạn <strong>không cần nhập bất kỳ mã nào</strong>, hệ thống vẫn tự động phân tích ý định tìm kiếm, kết hợp dữ liệu Google Search Suggest và AI để dự toán Search Volume & giá thầu CPC chính xác ngay lập tức!
+          </p>
+        </div>
+
+        <!-- 4 Bước Thực Hiện -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <!-- BƯỚC 1: Customer ID & Login CID -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 font-bold text-slate-800 text-xs">
+                <span class="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-[11px] font-black">1</span>
+                <span>Lấy Customer ID (CID) & Login CID</span>
+              </div>
+              <a href="https://ads.google.com" target="_blank" rel="noopener noreferrer" class="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                Mở Google Ads <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+              </a>
+            </div>
+            
+            <div class="text-xs text-slate-600 space-y-2 leading-relaxed">
+              <div class="p-2.5 bg-white border border-slate-200 rounded-lg space-y-1">
+                <span class="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                  <i class="fa-solid fa-id-card text-blue-500"></i> Customer ID (Bắt buộc):
+                </span>
+                <p class="text-[11px]">
+                  1. Đăng nhập vào <a href="https://ads.google.com" target="_blank" class="text-blue-600 underline font-medium">ads.google.com</a>.<br>
+                  2. Nhìn lên <strong>góc trên cùng bên phải màn hình</strong> (ngay cạnh ảnh đại diện Gmail).<br>
+                  3. Bạn sẽ thấy dãy 10 chữ số định dạng: <span class="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">XXX-XXX-XXXX</span> (ví dụ: <code class="font-mono text-blue-700">123-456-7890</code>). Copy dãy số này dán vào ô <strong>Customer ID</strong>.
+                </p>
+              </div>
+
+              <div class="p-2.5 bg-white border border-slate-200 rounded-lg space-y-1">
+                <span class="font-bold text-slate-800 text-[11px] flex items-center gap-1">
+                  <i class="fa-solid fa-sitemap text-indigo-500"></i> Login CID (Tùy chọn):
+                </span>
+                <p class="text-[11px]">
+                  - Nếu tài khoản của bạn là tài khoản cá nhân thông thường: <strong>ĐỂ TRỐNG</strong>.<br>
+                  - Nếu tài khoản được quản lý bởi tài khoản Người quản lý (MCC): Điền ID 10 số của <strong>tài khoản MCC cấp cao nhất</strong> vào đây.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- BƯỚC 2: Developer Token -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 font-bold text-slate-800 text-xs">
+                <span class="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-[11px] font-black">2</span>
+                <span>Lấy Developer Token (Từ tài khoản MCC)</span>
+              </div>
+              <a href="https://ads.google.com/home/tools/manager-accounts/" target="_blank" rel="noopener noreferrer" class="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                Tạo MCC miễn phí <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+              </a>
+            </div>
+
+            <div class="text-xs text-slate-600 space-y-2 leading-relaxed">
+              <div class="p-2.5 bg-white border border-slate-200 rounded-lg space-y-1.5 text-[11px]">
+                <p>
+                  <strong>Yêu cầu:</strong> Google yêu cầu Developer Token phải được cấp qua tài khoản Người quản lý (MCC). Nếu bạn chưa có tài khoản MCC, hãy truy cập link trên và bấm <em>"Tạo tài khoản người quản lý"</em> (chỉ mất 1 phút).
+                </p>
+                <div class="space-y-1 pt-1 border-t border-slate-100">
+                  <p class="font-semibold text-slate-800">Các bước lấy Token trong MCC:</p>
+                  <ol class="list-decimal list-inside space-y-1 pl-1 text-slate-600">
+                    <li>Đăng nhập vào tài khoản MCC của bạn.</li>
+                    <li>Bấm vào menu <strong>Công cụ và cài đặt (Tools & Settings)</strong> (biểu tượng cờ lê ở trên cùng).</li>
+                    <li>Chọn mục <strong>Cài đặt (Setup)</strong> &rarr; Bấm vào <strong>Trung tâm API (API Center)</strong>.</li>
+                    <li>Điền biểu mẫu thông tin công ty / ứng dụng (chọn mục đích nội bộ).</li>
+                    <li>Hệ thống sẽ tạo ngay một <strong>Developer Token</strong> (chuỗi ký tự chữ và số). Copy dán vào ô <strong>Developer Token</strong>.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BƯỚC 3: OAuth2 Client ID & Client Secret -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 font-bold text-slate-800 text-xs">
+                <span class="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-[11px] font-black">3</span>
+                <span>Tạo OAuth2 Client ID & Client Secret</span>
+              </div>
+              <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" class="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                Google Cloud Console <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+              </a>
+            </div>
+
+            <div class="text-xs text-slate-600 space-y-2 leading-relaxed">
+              <div class="p-2.5 bg-white border border-slate-200 rounded-lg space-y-1.5 text-[11px]">
+                <p>1. Đăng nhập <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-600 underline font-medium">console.cloud.google.com</a> bằng chính Gmail quản lý Google Ads.</p>
+                <p>2. Chọn hoặc tạo 1 <strong>Project mới</strong> (ví dụ: <code>Keyword-Tool</code>).</p>
+                <p>3. Vào <strong>APIs & Services</strong> &rarr; <strong>Library</strong> &rarr; Tìm kiếm <strong>Google Ads API</strong> &rarr; Bấm <strong>Enable (Bật)</strong>.</p>
+                <p>4. Vào <strong>APIs & Services</strong> &rarr; <strong>OAuth consent screen</strong> &rarr; Chọn <strong>External</strong> &rarr; Điền App Name, Email liên hệ &rarr; Bước <em>Test users</em>: Thêm chính Gmail của bạn vào danh sách.</p>
+                <p>5. Vào <strong>APIs & Services</strong> &rarr; <strong>Credentials</strong> &rarr; Bấm <strong>+ CREATE CREDENTIALS</strong> &rarr; Chọn <strong>OAuth client ID</strong>:</p>
+                <ul class="list-disc list-inside pl-2 space-y-1 text-slate-700 font-medium">
+                  <li>Application type: Chọn <strong>Web application</strong>.</li>
+                  <li>
+                    <span class="text-rose-600 font-bold">Quan trọng:</span> Authorized redirect URIs (URI chuyển hướng): Nhập chính xác địa chỉ:
+                    <div class="mt-1 flex items-center gap-1">
+                      <input type="text" readonly value="https://developers.google.com/oauthplayground" class="w-full px-2 py-1 bg-slate-100 border border-slate-300 rounded font-mono text-[10px] select-all outline-none">
+                      <button type="button" onclick="copyCodeText('https://developers.google.com/oauthplayground', this)" class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded text-[10px] whitespace-nowrap cursor-pointer">
+                        <i class="fa-regular fa-copy"></i> Chép
+                      </button>
+                    </div>
+                  </li>
+                </ul>
+                <p class="pt-1 text-slate-600">6. Bấm <strong>Create</strong> &rarr; Bạn nhận được <strong>Client ID</strong> và <strong>Client Secret</strong>. Lưu 2 chuỗi này vào form.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- BƯỚC 4: OAuth2 Refresh Token -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 font-bold text-slate-800 text-xs">
+                <span class="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-[11px] font-black">4</span>
+                <span>Tạo OAuth2 Refresh Token (Google OAuth Playground)</span>
+              </div>
+              <a href="https://developers.google.com/oauthplayground" target="_blank" rel="noopener noreferrer" class="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                Mở OAuth Playground <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+              </a>
+            </div>
+
+            <div class="text-xs text-slate-600 space-y-2 leading-relaxed">
+              <div class="p-2.5 bg-white border border-slate-200 rounded-lg space-y-1.5 text-[11px]">
+                <p>1. Truy cập <a href="https://developers.google.com/oauthplayground" target="_blank" class="text-blue-600 underline font-medium">developers.google.com/oauthplayground</a>.</p>
+                <p>2. Bấm vào biểu tượng <strong>Bánh răng cài đặt (⚙️ OAuth 2.0 configuration)</strong> ở góc trên bên phải màn hình:</p>
+                <ul class="list-disc list-inside pl-2 space-y-0.5 text-slate-700">
+                  <li>Tích chọn vào: <strong>"Use your own OAuth credentials"</strong>.</li>
+                  <li>Dán <strong>OAuth Client ID</strong> & <strong>OAuth Client Secret</strong> vừa lấy ở Bước 3.</li>
+                  <li>Bấm nút <strong>Close</strong>.</li>
+                </ul>
+                <p>3. Tại <strong>Step 1: Select & authorize APIs</strong> (cột bên trái):</p>
+                <div class="pl-2 space-y-1">
+                  <p>Kéo xuống dưới cùng ô <em>"Input your own scopes"</em>, dán chính xác scope Google Ads:</p>
+                  <div class="flex items-center gap-1">
+                    <input type="text" readonly value="https://www.googleapis.com/auth/adwords" class="w-full px-2 py-1 bg-slate-100 border border-slate-300 rounded font-mono text-[10px] select-all outline-none">
+                    <button type="button" onclick="copyCodeText('https://www.googleapis.com/auth/adwords', this)" class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded text-[10px] whitespace-nowrap cursor-pointer">
+                      <i class="fa-regular fa-copy"></i> Chép
+                    </button>
+                  </div>
+                  <p>Bấm nút <strong>Authorize APIs</strong> &rarr; Đăng nhập Gmail &rarr; Bấm Nâng cao / Tiếp tục cấp quyền cho ứng dụng.</p>
+                </div>
+                <p>4. Tại <strong>Step 2: Exchange authorization code for tokens</strong>:</p>
+                <p class="pl-2 text-slate-700">
+                  Bấm nút <strong>"Exchange authorization code for tokens"</strong> &rarr; Nhìn sang khung phản hồi bên phải, copy toàn bộ giá trị trong trường <code class="font-mono font-bold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">"refresh_token"</code> &rarr; Dán vào ô <strong>OAuth2 Refresh Token</strong> trên form!
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Tóm tắt 6 thông số cần điền -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+          <div class="font-bold text-xs text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-emerald-600"></i> Bảng Đối Chiếu 6 Thông Số Vào Form Cấu Hình:
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs divide-y divide-slate-200">
+              <thead class="bg-white text-slate-600 font-bold">
+                <tr>
+                  <th class="px-3 py-2 text-left w-48">Tên trường trong form</th>
+                  <th class="px-3 py-2 text-left w-36">Bắt buộc?</th>
+                  <th class="px-3 py-2 text-left">Nguồn lấy thông tin</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700">
+                <tr>
+                  <td class="px-3 py-2 font-mono font-semibold text-blue-700">Developer Token</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Bắt buộc</span></td>
+                  <td class="px-3 py-2">Tài khoản Google Ads Manager (MCC) &rarr; Tools & Settings &rarr; API Center</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2 font-mono font-semibold text-blue-700">Customer ID (CID)</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Bắt buộc</span></td>
+                  <td class="px-3 py-2">Góc trên cùng bên phải giao diện ads.google.com (10 số: <code>XXX-XXX-XXXX</code>)</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2 font-mono font-semibold text-blue-700">Login CID</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">Tùy chọn</span></td>
+                  <td class="px-3 py-2">ID của tài khoản MCC quản lý. Nếu dùng tài khoản cá nhân độc lập thì để trống</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2 font-mono font-semibold text-blue-700">OAuth2 Client ID</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Bắt buộc</span></td>
+                  <td class="px-3 py-2">Google Cloud Console &rarr; APIs & Services &rarr; Credentials (dạng <code>...apps.googleusercontent.com</code>)</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2 font-mono font-semibold text-blue-700">OAuth2 Client Secret</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Bắt buộc</span></td>
+                  <td class="px-3 py-2">Google Cloud Console &rarr; APIs & Services &rarr; Credentials (chuỗi bảo mật tạo cùng Client ID)</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2 font-mono font-semibold text-blue-700">OAuth2 Refresh Token</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Bắt buộc</span></td>
+                  <td class="px-3 py-2">Tạo qua Google OAuth Playground (Step 2: Exchange authorization code for tokens, bắt đầu bằng <code>1//...</code>)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pt-2 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Sau khi điền đủ, bấm <strong>"Lưu"</strong> rồi bấm <strong>"Kiểm Tra Kết Nối"</strong> để hoàn tất.</span>
+            <a href="#tab-keywords" class="text-blue-600 font-bold hover:underline inline-flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up"></i> Lên đầu trang điền thông tin
+            </a>
+          </div>
         </div>
 
       </div>
@@ -2550,6 +2804,22 @@
     function copyKeywordText(text) {
       navigator.clipboard.writeText(text);
       alert(`Đã sao chép từ khóa: "${text}"`);
+    }
+
+    function copyCodeText(text, btnEl) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          if (btnEl) {
+            const orig = btnEl.innerHTML;
+            btnEl.innerHTML = '<i class="fa-solid fa-check text-emerald-600"></i> Đã chép!';
+            setTimeout(() => { btnEl.innerHTML = orig; }, 2000);
+          }
+        }).catch(() => {
+          prompt("Hãy sao chép chuỗi này:", text);
+        });
+      } else {
+        prompt("Hãy sao chép chuỗi này:", text);
+      }
     }
 
     async function exportKeywordsToCSV() {
