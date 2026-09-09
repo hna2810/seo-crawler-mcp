@@ -87,6 +87,10 @@
         <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> Phân Tích AI (LLM)
         <span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-full font-bold">Chuyên Gia 20 Năm</span>
       </button>
+      <button onclick="switchTab('keywords')" id="tab-keywords-btn" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg border-b-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-key text-amber-500"></i> Nghiên Cứu Từ Khóa
+        <span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold">AI + Keyword Planner</span>
+      </button>
     </div>
   </div>
 
@@ -1046,6 +1050,256 @@
 
     </div>
 
+    <!-- TAB 8: KEYWORD RESEARCH (AI + GOOGLE KEYWORD PLANNER) -->
+    <div id="tab-keywords" class="hidden space-y-6">
+
+      <!-- Hero Banner -->
+      <div class="bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div class="relative z-10 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <span class="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 border border-white/20">
+              <i class="fa-solid fa-wand-magic-sparkles text-yellow-200"></i> AI Keyword Discovery & Google Planner API
+            </span>
+            <div id="kw-target-site" class="text-xs bg-black/20 px-3 py-1 rounded-full font-mono text-amber-100">
+              Chưa chọn phiên crawl
+            </div>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            Nghiên Cứu Từ Khóa Thông Minh (AI + Google Keyword Planner)
+          </h2>
+          <p class="text-sm text-amber-50 max-w-3xl leading-relaxed">
+            Hệ thống kết hợp ý tưởng của bạn, tự động đào sâu các lỗ hổng <strong class="text-white underline">Content Gap</strong> (chủ đề 0 bài viết) từ dữ liệu đã crawl, gửi vào <strong class="text-white underline">Google Ads Keyword Planner API</strong> để lấy lượng tìm kiếm chính xác (Search Volume), độ cạnh tranh và giá thầu CPC. Sau đó AI sẽ phân loại Search Intent và chọn lọc ra bộ từ khóa tối ưu nhất.
+          </p>
+        </div>
+      </div>
+
+      <!-- Grid 2 Cột: Cấu Hình API & Nhập Ý Tưởng -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Cột Trái (lg:col-span-5): Cấu hình Google Ads API -->
+        <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-brands fa-google text-blue-600 text-base"></i> Cấu Hình Google Ads API
+            </h3>
+            <span id="gads-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+              Chế độ Dự toán
+            </span>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Chế Độ Thu Thập Chỉ Số:</label>
+              <select id="gads-mode" onchange="toggleGoogleAdsMode()" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium outline-none bg-slate-50 focus:bg-white">
+                <option value="simulated">Chế độ Dự toán Thông minh (AI + Google Search Suggest) [Khuyên Dùng Ban Đầu]</option>
+                <option value="official">Google Ads API Chính Thức (Keyword Planner REST API)</option>
+              </select>
+            </div>
+
+            <!-- Google Ads API Official Inputs Container -->
+            <div id="gads-official-fields" class="hidden space-y-2.5 pt-1 border-t border-dashed border-slate-200">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Developer Token:</label>
+                <input type="password" id="gads-dev-token" placeholder="Nhập Developer Token từ Google Ads Manager" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] outline-none">
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Customer ID (CID):</label>
+                  <input type="text" id="gads-customer-id" placeholder="VD: 123-456-7890" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] outline-none">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Login CID (Tùy chọn):</label>
+                  <input type="text" id="gads-login-cid" placeholder="MCC ID nếu có" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] outline-none">
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">OAuth2 Client ID:</label>
+                <input type="text" id="gads-client-id" placeholder="apps.googleusercontent.com" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] outline-none">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">OAuth2 Client Secret:</label>
+                <input type="password" id="gads-client-secret" placeholder="Client Secret" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] outline-none">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">OAuth2 Refresh Token:</label>
+                <input type="password" id="gads-refresh-token" placeholder="Refresh Token của tài khoản Google Ads" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] outline-none">
+              </div>
+
+              <div class="flex gap-2 pt-1">
+                <button type="button" onclick="testGoogleAdsConfig()" id="btn-test-gads" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all flex items-center justify-center gap-1 text-[11px]">
+                  <i class="fa-solid fa-plug"></i> Kiểm Tra Kết Nối
+                </button>
+                <button type="button" onclick="saveGoogleAdsConfig()" class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold rounded-lg transition-all text-[11px]">
+                  <i class="fa-solid fa-floppy-disk"></i> Lưu
+                </button>
+              </div>
+            </div>
+
+            <div class="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 leading-relaxed">
+              <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i>
+              <strong>Mẹo:</strong> Nếu bạn chưa có sẵn Developer Token Google Ads đã duyệt (thường mất thời gian đăng ký), hãy để <strong>"Chế độ Dự toán Thông minh"</strong> để hệ thống tự động sinh dữ liệu Search Volume & giá thầu sát thực tế ngay lập tức!
+            </div>
+          </div>
+        </div>
+
+        <!-- Cột Phải (lg:col-span-7): Ý tưởng Hạt Giống & Content Gap -->
+        <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4 flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-seedling text-emerald-600 text-base"></i> Ý Tưởng & Khai Thác Content Gap
+              </h3>
+              <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                <input type="checkbox" id="kw-enable-gaps" checked class="rounded text-amber-600 focus:ring-amber-500 w-4 h-4">
+                Tự động kết hợp Content Gap website
+              </label>
+            </div>
+
+            <!-- Content Gaps Preview -->
+            <div id="kw-gaps-container" class="space-y-1.5">
+              <span class="text-xs font-bold text-slate-600 flex items-center gap-1">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Các Content Gap phát hiện từ website (Subtopic 0 bài):
+              </span>
+              <div id="kw-gaps-tags" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                <span class="text-slate-400 italic">Hãy quét hoặc chọn một phiên crawl để tự động nạp Content Gaps...</span>
+              </div>
+            </div>
+
+            <!-- Custom User Ideas Textarea -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Ý tưởng từ khóa riêng của bạn (Tùy chọn):</span>
+                <span class="text-slate-400 font-normal text-[11px]">Mỗi từ một dòng hoặc cách nhau bằng dấu phẩy</span>
+              </label>
+              <textarea id="kw-user-ideas" rows="3" placeholder="Ví dụ:&#10;tắm bé sơ sinh tại nhà&#10;massage bầu giảm đau lưng&#10;thông tắc tia sữa tại hà nội" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"></textarea>
+            </div>
+          </div>
+
+          <!-- Start Action Button -->
+          <div class="pt-2">
+            <button onclick="handleStartKeywordResearch()" id="kw-research-submit-btn" class="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 hover:from-amber-600 hover:to-amber-700 text-white font-black text-sm rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 transform active:scale-98 cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass-chart text-base"></i> BẮT ĐẦU NGHIÊN CỨU TỪ KHÓA (AI + KEYWORD PLANNER)
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- KHUNG KẾT QUẢ NGHIÊN CỨU TỪ KHÓA -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
+        
+        <!-- Top Metrics KPI Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <span class="text-xs text-slate-500 font-semibold">Tổng Từ Khóa Tìm Được</span>
+            <div id="kw-stat-total" class="text-2xl font-black text-slate-900">0</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <span class="text-xs text-slate-500 font-semibold">Tổng Lượt Tìm Kiếm / Tháng</span>
+            <div id="kw-stat-volume" class="text-2xl font-black text-blue-600">0</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <span class="text-xs text-slate-500 font-semibold">Khuyên Viết Ngay (Ưu Tiên Cao)</span>
+            <div id="kw-stat-high" class="text-2xl font-black text-emerald-600">0</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <span class="text-xs text-slate-500 font-semibold">Bù Đắp Content Gap</span>
+            <div id="kw-stat-gaps" class="text-2xl font-black text-purple-600">0</div>
+          </div>
+        </div>
+
+        <!-- AI Executive Summary Banner -->
+        <div id="kw-summary-box" class="hidden p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl text-xs text-amber-950 space-y-1">
+          <div class="font-bold flex items-center gap-1.5 text-amber-900">
+            <i class="fa-solid fa-robot text-amber-600"></i> Đánh Giá Tổng Quan Từ Chuyên Gia AI:
+          </div>
+          <p id="kw-summary-text" class="leading-relaxed"></p>
+        </div>
+
+        <!-- Filter Bar & Export Actions -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+            <!-- Search Keyword -->
+            <div class="relative flex-1 min-w-[180px]">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+              <input type="text" id="kw-filter-search" oninput="applyKeywordFilters()" placeholder="Tìm từ khóa..." class="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-amber-500">
+            </div>
+
+            <!-- Filter Intent -->
+            <select id="kw-filter-intent" onchange="applyKeywordFilters()" class="px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none bg-white font-medium">
+              <option value="">Tất cả Intent (Ý định)</option>
+              <option value="Thông tin">Thông tin (Hướng dẫn/Phòng ngừa)</option>
+              <option value="Thương mại">Thương mại (Chi phí/Bảng giá/Review)</option>
+              <option value="Giao dịch">Giao dịch (Dịch vụ/Đặt lịch)</option>
+              <option value="Điều hướng">Điều hướng (Địa chỉ/Cơ sở)</option>
+            </select>
+
+            <!-- Filter Competition -->
+            <select id="kw-filter-comp" onchange="applyKeywordFilters()" class="px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none bg-white font-medium">
+              <option value="">Tất cả Cạnh tranh</option>
+              <option value="Thấp">Thấp</option>
+              <option value="Trung bình">Trung bình</option>
+              <option value="Cao">Cao</option>
+            </select>
+
+            <!-- Filter Priority -->
+            <select id="kw-filter-priority" onchange="applyKeywordFilters()" class="px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none bg-white font-medium">
+              <option value="">Tất cả Mức Ưu Tiên</option>
+              <option value="Ưu tiên cao">Chỉ Ưu Tiên Cao (Viết ngay)</option>
+              <option value="Ưu tiên trung bình">Ưu Tiên Trung Bình</option>
+              <option value="gap">Chỉ Từ Khóa Lấp Content Gap</option>
+            </select>
+          </div>
+
+          <!-- Export Buttons -->
+          <div class="flex items-center gap-2">
+            <button onclick="exportKeywordsToCSV()" id="kw-export-csv-btn" disabled class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+              <i class="fa-solid fa-file-csv text-blue-600"></i> Xuất CSV
+            </button>
+            <button onclick="exportKeywordsToExcel()" id="kw-export-excel-btn" disabled class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+              <i class="fa-solid fa-file-excel"></i> Xuất Excel (.XLSX)
+            </button>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full divide-y divide-slate-200 text-xs">
+            <thead class="bg-slate-50 text-slate-700 font-bold">
+              <tr>
+                <th class="px-3 py-2.5 text-center w-12">#</th>
+                <th class="px-3 py-2.5 text-left">Từ Khóa (Keyword)</th>
+                <th class="px-3 py-2.5 text-right w-28">Volume / Tháng</th>
+                <th class="px-3 py-2.5 text-center w-24">Cạnh Tranh</th>
+                <th class="px-3 py-2.5 text-center w-28">Giá Thầu (CPC)</th>
+                <th class="px-3 py-2.5 text-left w-36">Search Intent</th>
+                <th class="px-3 py-2.5 text-left w-36">Chủ Đề Phù Hợp</th>
+                <th class="px-3 py-2.5 text-center w-28">Content Gap?</th>
+                <th class="px-3 py-2.5 text-left w-52">Đánh Giá & Hướng Viết AI</th>
+              </tr>
+            </thead>
+            <tbody id="kw-table-body" class="divide-y divide-slate-100 bg-white">
+              <tr>
+                <td colspan="9" class="px-4 py-12 text-center text-slate-400">
+                  <div class="flex flex-col items-center justify-center space-y-2">
+                    <i class="fa-solid fa-key text-3xl text-slate-300"></i>
+                    <p class="font-medium text-slate-500">Chưa có dữ liệu nghiên cứu từ khóa nào</p>
+                    <p class="text-[11px] text-slate-400">Bấm nút "Bắt đầu nghiên cứu từ khóa" ở trên để AI và Google Keyword Planner phân tích</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+
     <!-- MODAL TEST 1 TỪ KHÓA ĐƠN LẺ (DÀNH CHO TEST NHANH, KHÔNG ẢNH HƯỞNG GIAO DIỆN CHÍNH) -->
     <div id="single-tool-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
@@ -1077,7 +1331,7 @@
     let eventSource = null;
 
     function switchTab(tabId) {
-      const tabs = ["crawl", "structure", "topics", "audit", "articles", "export", "ai"];
+      const tabs = ["crawl", "structure", "topics", "audit", "articles", "export", "ai", "keywords"];
       tabs.forEach(t => {
         const el = document.getElementById("tab-" + t);
         const btn = document.getElementById("tab-" + t + "-btn");
@@ -1098,6 +1352,9 @@
 
       if (tabId === "ai" && currentSessionData) {
         updateAITargetInfo(currentSessionData);
+      }
+      if (tabId === "keywords" && currentSessionData) {
+        updateKWTargetInfo(currentSessionData);
       }
     }
 
@@ -1325,6 +1582,7 @@
       }
 
       updateAITargetInfo(data);
+      updateKWTargetInfo(data);
 
       // Badges
       const bStruct = document.getElementById("badge-structure-count");
@@ -1992,10 +2250,364 @@
       URL.revokeObjectURL(url);
     }
 
+    // =======================================================
+    // KEYWORD RESEARCH (AI + GOOGLE KEYWORD PLANNER) LOGIC
+    // =======================================================
+    let currentKeywords = [];
+    let filteredKeywords = [];
+
+    function toggleGoogleAdsMode() {
+      const mode = document.getElementById("gads-mode").value;
+      const fields = document.getElementById("gads-official-fields");
+      const badge = document.getElementById("gads-status-badge");
+      if (mode === "official") {
+        fields.classList.remove("hidden");
+        badge.innerText = "Google Ads API";
+        badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700";
+      } else {
+        fields.classList.add("hidden");
+        badge.innerText = "Chế độ Dự toán";
+        badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800";
+      }
+    }
+
+    function loadGoogleAdsConfig() {
+      try {
+        const saved = localStorage.getItem("seo_crawler_gads_config");
+        if (saved) {
+          const cfg = JSON.parse(saved);
+          if (cfg.developerToken) document.getElementById("gads-dev-token").value = cfg.developerToken;
+          if (cfg.customerId) document.getElementById("gads-customer-id").value = cfg.customerId;
+          if (cfg.loginCustomerId) document.getElementById("gads-login-cid").value = cfg.loginCustomerId;
+          if (cfg.clientId) document.getElementById("gads-client-id").value = cfg.clientId;
+          if (cfg.clientSecret) document.getElementById("gads-client-secret").value = cfg.clientSecret;
+          if (cfg.refreshToken) document.getElementById("gads-refresh-token").value = cfg.refreshToken;
+          if (cfg.mode) {
+            document.getElementById("gads-mode").value = cfg.mode;
+            toggleGoogleAdsMode();
+          }
+        }
+      } catch {}
+    }
+
+    function getGoogleAdsFormData() {
+      return {
+        mode: document.getElementById("gads-mode").value,
+        developerToken: document.getElementById("gads-dev-token").value.trim(),
+        customerId: document.getElementById("gads-customer-id").value.trim(),
+        loginCustomerId: document.getElementById("gads-login-cid").value.trim(),
+        clientId: document.getElementById("gads-client-id").value.trim(),
+        clientSecret: document.getElementById("gads-client-secret").value.trim(),
+        refreshToken: document.getElementById("gads-refresh-token").value.trim()
+      };
+    }
+
+    function saveGoogleAdsConfig() {
+      try {
+        const cfg = getGoogleAdsFormData();
+        localStorage.setItem("seo_crawler_gads_config", JSON.stringify(cfg));
+        alert("Đã lưu cấu hình Google Ads API thành công!");
+      } catch (err) {
+        alert("Lỗi khi lưu cấu hình: " + err.message);
+      }
+    }
+
+    async function testGoogleAdsConfig() {
+      const cfg = getGoogleAdsFormData();
+      const btn = document.getElementById("btn-test-gads");
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra...`;
+
+      try {
+        const res = await fetch("/api/keywords/test-config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cfg)
+        });
+        const result = await res.json();
+        const badge = document.getElementById("gads-status-badge");
+        if (result.success) {
+          badge.innerText = "Đã kết nối Google Ads";
+          badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800";
+          alert("✓ " + result.message);
+        } else {
+          badge.innerText = "Lỗi kết nối";
+          badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800";
+          alert("✗ " + result.message);
+        }
+      } catch (err) {
+        alert("Lỗi khi gọi API: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+    }
+
+    function updateKWTargetInfo(data) {
+      if (!data) return;
+      const targetSiteEl = document.getElementById("kw-target-site");
+      if (targetSiteEl) {
+        let domain = data.rootUrl || `Phiên #${data.sessionId}`;
+        try { domain = new URL(data.rootUrl).hostname; } catch {}
+        targetSiteEl.innerText = `Mục tiêu: ${domain} (${data.totalPages} URL)`;
+      }
+
+      // Populate Content Gaps Tags
+      const tagsBox = document.getElementById("kw-gaps-tags");
+      if (tagsBox && data.contentRatio && data.contentRatio.contentGaps) {
+        const allGaps = [];
+        data.contentRatio.contentGaps.forEach(g => {
+          (g.subtopicsWithZeroArticles || []).forEach(s => {
+            if (s && s !== "Chung") allGaps.push({ topic: g.topic, subtopic: s });
+          });
+        });
+
+        if (allGaps.length > 0) {
+          tagsBox.innerHTML = allGaps.map(item => `
+            <span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-[11px] inline-flex items-center gap-1">
+              <i class="fa-solid fa-tag text-amber-600 text-[10px]"></i> ${item.subtopic}
+              <span class="text-[9px] text-amber-700 opacity-80">(${item.topic})</span>
+            </span>
+          `).join("");
+        } else {
+          tagsBox.innerHTML = `<span class="text-emerald-700 font-semibold text-xs">Website đã phủ kín các chủ đề con!</span>`;
+        }
+      }
+    }
+
+    async function handleStartKeywordResearch() {
+      const btn = document.getElementById("kw-research-submit-btn");
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-base"></i> ĐANG TỔNG HỢP Ý TƯỞNG & TRA CỨU GOOGLE KEYWORD PLANNER...`;
+
+      try {
+        const userIdeas = document.getElementById("kw-user-ideas").value;
+        const gadsMode = document.getElementById("gads-mode").value;
+        const gadsConfig = getGoogleAdsFormData();
+
+        // Get AI settings if configured
+        let llmConfig = null;
+        try {
+          const aiSaved = localStorage.getItem("seo_crawler_ai_settings");
+          if (aiSaved) {
+            const parsed = JSON.parse(aiSaved);
+            const activeProvider = parsed.provider || "gemini";
+            const key = parsed.keys ? parsed.keys[activeProvider] : "";
+            if (key) {
+              llmConfig = {
+                provider: activeProvider,
+                apiKey: key,
+                model: parsed.model || "gemini-2.5-flash",
+                baseUrl: parsed.baseUrl
+              };
+            }
+          }
+        } catch {}
+
+        const payload = {
+          sessionId: currentSessionData ? currentSessionData.sessionId : undefined,
+          userIdeas,
+          useSimulatedMetrics: gadsMode !== "official",
+          googleAdsConfig: gadsMode === "official" ? gadsConfig : undefined,
+          llmConfig: llmConfig || undefined,
+          maxKeywords: 60
+        };
+
+        const res = await fetch("/api/keywords/research", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: `Lỗi máy chủ (${res.status})` }));
+          throw new Error(errData.error || "Quá trình nghiên cứu từ khóa thất bại");
+        }
+
+        const data = await res.json();
+        currentKeywords = data.keywords || [];
+        filteredKeywords = [...currentKeywords];
+
+        // Update KPI Counters
+        document.getElementById("kw-stat-total").innerText = data.totalFound || currentKeywords.length;
+        document.getElementById("kw-stat-volume").innerText = (data.totalSearchVolume || 0).toLocaleString("vi-VN");
+        document.getElementById("kw-stat-high").innerText = data.highPriorityCount || 0;
+        document.getElementById("kw-stat-gaps").innerText = currentKeywords.filter(k => k.isContentGap).length;
+
+        // Update Summary Box
+        if (data.summary) {
+          const sumBox = document.getElementById("kw-summary-box");
+          sumBox.classList.remove("hidden");
+          document.getElementById("kw-summary-text").innerText = data.summary;
+        }
+
+        // Enable Export buttons
+        document.getElementById("kw-export-csv-btn").disabled = false;
+        document.getElementById("kw-export-excel-btn").disabled = false;
+
+        // Render table
+        applyKeywordFilters();
+
+      } catch (err) {
+        alert("Lỗi Nghiên Cứu Từ Khóa: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+    }
+
+    function applyKeywordFilters() {
+      const search = (document.getElementById("kw-filter-search").value || "").toLowerCase().trim();
+      const intent = document.getElementById("kw-filter-intent").value;
+      const comp = document.getElementById("kw-filter-comp").value;
+      const priority = document.getElementById("kw-filter-priority").value;
+
+      filteredKeywords = currentKeywords.filter(k => {
+        if (search && !k.keyword.toLowerCase().includes(search)) return false;
+        if (intent && !k.searchIntent.includes(intent)) return false;
+        if (comp && k.competition !== comp) return false;
+        if (priority === "gap" && !k.isContentGap) return false;
+        if (priority && priority !== "gap" && !k.priority.includes(priority)) return false;
+        return true;
+      });
+
+      renderKeywordsTable(filteredKeywords);
+    }
+
+    function renderKeywordsTable(keywords) {
+      const tbody = document.getElementById("kw-table-body");
+      if (!keywords || keywords.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" class="px-4 py-8 text-center text-slate-400">
+              Không tìm thấy từ khóa nào phù hợp với bộ lọc tìm kiếm.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const maxVol = Math.max(...keywords.map(k => k.avgMonthlySearches), 100);
+
+      tbody.innerHTML = keywords.map((k, idx) => {
+        // Competition badge
+        let compBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-amber-100 text-amber-800">TB (${k.competitionIndex})</span>`;
+        if (k.competition === "Thấp") {
+          compBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-100 text-emerald-800">Thấp (${k.competitionIndex})</span>`;
+        } else if (k.competition === "Cao") {
+          compBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-rose-100 text-rose-800">Cao (${k.competitionIndex})</span>`;
+        }
+
+        // Gap badge
+        const gapBadge = k.isContentGap
+          ? `<span class="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] border border-purple-200"><i class="fa-solid fa-star text-purple-600"></i> Lấp Lỗ Hổng</span>`
+          : `<span class="text-slate-400">-</span>`;
+
+        // Priority badge
+        let priBadge = `<span class="px-2 py-0.5 rounded font-medium text-[10px] bg-slate-100 text-slate-600">Tham khảo</span>`;
+        if (k.priority.includes("cao")) {
+          priBadge = `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300">VIẾT NGAY</span>`;
+        } else if (k.priority.includes("trung bình")) {
+          priBadge = `<span class="px-2 py-0.5 rounded font-semibold text-[10px] bg-amber-100 text-amber-800">Ưu tiên vừa</span>`;
+        }
+
+        const volPercent = Math.min(100, Math.round((k.avgMonthlySearches / maxVol) * 100));
+
+        return `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-3 py-2.5 text-center text-slate-400 font-mono">${idx + 1}</td>
+            <td class="px-3 py-2.5 font-bold text-slate-900">
+              <span class="hover:text-blue-600 cursor-pointer" onclick="copyKeywordText('${k.keyword}')">${k.keyword}</span>
+            </td>
+            <td class="px-3 py-2.5 text-right font-mono">
+              <div class="font-bold text-blue-600">${k.avgMonthlySearches.toLocaleString("vi-VN")}</div>
+              <div class="w-full bg-slate-100 h-1 rounded-full mt-1 overflow-hidden">
+                <div class="bg-blue-500 h-full" style="width: ${volPercent}%"></div>
+              </div>
+            </td>
+            <td class="px-3 py-2.5 text-center">${compBadge}</td>
+            <td class="px-3 py-2.5 text-center font-mono text-slate-600 text-[11px]">${k.estimatedCpcRange}</td>
+            <td class="px-3 py-2.5">
+              <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium">${k.searchIntent}</span>
+            </td>
+            <td class="px-3 py-2.5">
+              <div class="font-semibold text-slate-800 text-[11px]">${k.matchedTopic}</div>
+              <div class="text-slate-500 text-[10px]">${k.matchedSubtopic}</div>
+            </td>
+            <td class="px-3 py-2.5 text-center">${gapBadge}</td>
+            <td class="px-3 py-2.5">
+              <div class="flex items-center gap-1.5 mb-1">${priBadge}</div>
+              <div class="text-slate-600 text-[11px] leading-snug">${k.aiRecommendation}</div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function copyKeywordText(text) {
+      navigator.clipboard.writeText(text);
+      alert(`Đã sao chép từ khóa: "${text}"`);
+    }
+
+    async function exportKeywordsToCSV() {
+      const list = filteredKeywords.length > 0 ? filteredKeywords : currentKeywords;
+      if (list.length === 0) return alert("Không có từ khóa để xuất.");
+
+      try {
+        const res = await fetch("/api/keywords/export-csv", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keywords: list })
+        });
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `nghien-cuu-tu-khoa-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Lỗi xuất CSV: " + err.message);
+      }
+    }
+
+    async function exportKeywordsToExcel() {
+      const list = filteredKeywords.length > 0 ? filteredKeywords : currentKeywords;
+      if (list.length === 0) return alert("Không có từ khóa để xuất.");
+
+      try {
+        const totVol = list.reduce((a, b) => a + b.avgMonthlySearches, 0);
+        const res = await fetch("/api/keywords/export-excel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            keywords: list,
+            summaryInfo: { totalVolume: totVol, seedsCount: list.length }
+          })
+        });
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `nghien-cuu-tu-khoa-${Date.now()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Lỗi xuất Excel: " + err.message);
+      }
+    }
+
     // Auto-load latest session on page load
     window.addEventListener("DOMContentLoaded", async () => {
       loadSessionsList();
       loadAISettings();
+      loadGoogleAdsConfig();
       try {
         const res = await fetch("/api/session/latest");
         if (res.ok) {

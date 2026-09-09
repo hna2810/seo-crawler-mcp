@@ -11,6 +11,8 @@ exports.generateExternalLinksCSV = generateExternalLinksCSV;
 exports.generateMarkdownReport = generateMarkdownReport;
 exports.flattenSiteTreeForReport = flattenSiteTreeForReport;
 exports.generateComprehensiveExcelWorkbook = generateComprehensiveExcelWorkbook;
+exports.generateKeywordsCSV = generateKeywordsCSV;
+exports.generateKeywordsExcelWorkbook = generateKeywordsExcelWorkbook;
 const extractor_1 = require("../crawler/extractor");
 const exceljs_1 = __importDefault(require("exceljs"));
 // @ts-ignore
@@ -1469,5 +1471,176 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
             }],
         anchor: "M3:U17"
     });
+    return Buffer.from(rawBuf);
+}
+/**
+ * Generate CSV export for Keyword Research results
+ */
+function generateKeywordsCSV(keywords) {
+    const headers = [
+        "STT",
+        "Từ Khóa",
+        "Lượt Tìm Kiếm / Tháng",
+        "Mức Độ Cạnh Tranh",
+        "Chỉ Số Cạnh Tranh (0-100)",
+        "Giá Thầu Ước Tính (CPC)",
+        "Ý Định Tìm Kiếm (Intent)",
+        "Chủ Đề Chính",
+        "Chủ Đề Con",
+        "Lấp Lỗ Hổng Content Gap",
+        "Mức Độ Ưu Tiên",
+        "Đánh Giá & Hướng Nội Dung"
+    ];
+    const rows = keywords.map((k, idx) => [
+        idx + 1,
+        escapeCSV(k.keyword),
+        k.avgMonthlySearches,
+        escapeCSV(k.competition),
+        k.competitionIndex,
+        escapeCSV(k.estimatedCpcRange),
+        escapeCSV(k.searchIntent),
+        escapeCSV(k.matchedTopic),
+        escapeCSV(k.matchedSubtopic),
+        escapeCSV(k.isContentGap ? "Có" : "Không"),
+        escapeCSV(k.priority),
+        escapeCSV(k.aiRecommendation)
+    ].join(","));
+    return "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+}
+/**
+ * Generate professional Excel workbook (.xlsx) for Keyword Research results
+ */
+async function generateKeywordsExcelWorkbook(keywords, summaryInfo) {
+    const wb = new exceljs_1.default.Workbook();
+    wb.creator = "SEO Crawler & AI Keyword Planner";
+    wb.created = new Date();
+    const NAVY = "FF0F172A";
+    const BLUE = "FF2563EB";
+    const EMERALD = "FF059669";
+    const AMBER = "FFD97706";
+    const ROSE = "FFE11D48";
+    const BORDER_COLOR = "FFE2E8F0";
+    const thinBorder = {
+        top: { style: "thin", color: { argb: BORDER_COLOR } },
+        bottom: { style: "thin", color: { argb: BORDER_COLOR } },
+        left: { style: "thin", color: { argb: BORDER_COLOR } },
+        right: { style: "thin", color: { argb: BORDER_COLOR } }
+    };
+    const ws = wb.addWorksheet("Nghiên Cứu Từ Khóa", {
+        properties: { tabColor: { argb: BLUE } },
+        views: [{ showGridLines: true, state: "frozen", ySplit: 4 }]
+    });
+    // Title Row 1
+    ws.mergeCells("A1:L1");
+    const titleCell = ws.getCell("A1");
+    titleCell.value = "BẢNG TỔNG HỢP NGHIÊN CỨU TỪ KHÓA (AI + GOOGLE KEYWORD PLANNER)";
+    titleCell.font = { name: "Segoe UI", size: 15, bold: true, color: { argb: "FFFFFFFF" } };
+    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+    titleCell.alignment = { vertical: "middle", horizontal: "center" };
+    ws.getRow(1).height = 36;
+    // Subtitle Row 2
+    ws.mergeCells("A2:L2");
+    const subCell = ws.getCell("A2");
+    const totVol = summaryInfo?.totalVolume || keywords.reduce((a, b) => a + b.avgMonthlySearches, 0);
+    const highPri = keywords.filter(k => k.priority.includes("cao")).length;
+    subCell.value = `Tổng từ khóa: ${keywords.length} cụm từ   |   Tổng Search Volume: ${totVol.toLocaleString("vi-VN")} lượt/tháng   |   Từ khóa viết ngay (Ưu tiên cao): ${highPri} cụm từ`;
+    subCell.font = { name: "Segoe UI", size: 10, color: { argb: "FFCBD5E1" } };
+    subCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
+    subCell.alignment = { vertical: "middle", horizontal: "center" };
+    ws.getRow(2).height = 22;
+    // Blank row 3
+    ws.getRow(3).height = 10;
+    // Headers Row 4
+    const headers = [
+        "STT", "Từ Khóa", "Search Volume / Tháng", "Độ Cạnh Tranh", "Chỉ Số (0-100)",
+        "Giá Thầu CPC", "Ý Định Tìm Kiếm (Intent)", "Chủ Đề Chính", "Chủ Đề Con",
+        "Lấp Content Gap?", "Mức Độ Ưu Tiên", "Đánh Giá & Hướng Nội Dung"
+    ];
+    const headerRow = ws.getRow(4);
+    headerRow.height = 28;
+    headers.forEach((h, idx) => {
+        const cell = headerRow.getCell(idx + 1);
+        cell.value = h;
+        cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.border = thinBorder;
+    });
+    // Data rows
+    keywords.forEach((k, idx) => {
+        const row = ws.getRow(5 + idx);
+        row.height = 24;
+        const rowBg = idx % 2 === 0 ? "FFFFFFFF" : "FFF8FAFC";
+        // Values
+        row.getCell(1).value = idx + 1;
+        row.getCell(2).value = k.keyword;
+        row.getCell(3).value = k.avgMonthlySearches;
+        row.getCell(4).value = k.competition;
+        row.getCell(5).value = k.competitionIndex;
+        row.getCell(6).value = k.estimatedCpcRange;
+        row.getCell(7).value = k.searchIntent;
+        row.getCell(8).value = k.matchedTopic;
+        row.getCell(9).value = k.matchedSubtopic;
+        row.getCell(10).value = k.isContentGap ? "CÓ (Lấp lỗ hổng)" : "Không";
+        row.getCell(11).value = k.priority;
+        row.getCell(12).value = k.aiRecommendation;
+        // Formatting
+        for (let c = 1; c <= 12; c++) {
+            const cell = row.getCell(c);
+            cell.font = { name: "Segoe UI", size: 10, color: { argb: "FF1E293B" } };
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
+            cell.border = thinBorder;
+            cell.alignment = { vertical: "middle" };
+        }
+        row.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+        row.getCell(2).font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FF0F172A" } };
+        row.getCell(3).alignment = { vertical: "middle", horizontal: "right" };
+        row.getCell(3).numFmt = "#,##0";
+        row.getCell(4).alignment = { vertical: "middle", horizontal: "center" };
+        row.getCell(5).alignment = { vertical: "middle", horizontal: "center" };
+        row.getCell(6).alignment = { vertical: "middle", horizontal: "center" };
+        row.getCell(10).alignment = { vertical: "middle", horizontal: "center" };
+        row.getCell(11).alignment = { vertical: "middle", horizontal: "center" };
+        // Competition colors
+        if (k.competition === "Thấp") {
+            row.getCell(4).font = { name: "Segoe UI", size: 10, bold: true, color: { argb: EMERALD } };
+        }
+        else if (k.competition === "Cao") {
+            row.getCell(4).font = { name: "Segoe UI", size: 10, bold: true, color: { argb: ROSE } };
+        }
+        else {
+            row.getCell(4).font = { name: "Segoe UI", size: 10, bold: true, color: { argb: AMBER } };
+        }
+        // Content Gap badge
+        if (k.isContentGap) {
+            row.getCell(10).font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FF7C3AED" } };
+            row.getCell(10).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F3FF" } };
+        }
+        // Priority badge
+        if (k.priority.includes("cao")) {
+            row.getCell(11).font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FF166534" } };
+            row.getCell(11).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCFCE7" } };
+        }
+        else if (k.priority.includes("trung bình")) {
+            row.getCell(11).font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FF854D0E" } };
+            row.getCell(11).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF9C3" } };
+        }
+    });
+    // AutoFilter
+    ws.autoFilter = `A4:L${4 + keywords.length}`;
+    // Column widths
+    ws.getColumn(1).width = 6;
+    ws.getColumn(2).width = 32;
+    ws.getColumn(3).width = 18;
+    ws.getColumn(4).width = 16;
+    ws.getColumn(5).width = 14;
+    ws.getColumn(6).width = 20;
+    ws.getColumn(7).width = 26;
+    ws.getColumn(8).width = 22;
+    ws.getColumn(9).width = 22;
+    ws.getColumn(10).width = 20;
+    ws.getColumn(11).width = 24;
+    ws.getColumn(12).width = 40;
+    const rawBuf = await wb.xlsx.writeBuffer();
     return Buffer.from(rawBuf);
 }

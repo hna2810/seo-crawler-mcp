@@ -18,6 +18,8 @@ const taxonomy_1 = require("./config/taxonomy");
 const report_1 = require("./utils/report");
 const llmService_1 = require("./ai/llmService");
 const promptBuilder_1 = require("./ai/promptBuilder");
+const googleAdsService_1 = require("./keywords/googleAdsService");
+const keywordResearcher_1 = require("./keywords/keywordResearcher");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3333;
 const mcpTransports = new Map();
@@ -490,6 +492,70 @@ app.post("/api/ai/analyze", async (req, res) => {
         console.error("AI Analysis error:", err);
         res.write(`data: ${JSON.stringify({ error: err.message || String(err) })}\n\n`);
         res.end();
+    }
+});
+// ==========================================
+// KEYWORD RESEARCH (AI + GOOGLE KEYWORD PLANNER) APIS
+// ==========================================
+// Test Google Ads API credentials
+app.post("/api/keywords/test-config", async (req, res) => {
+    try {
+        const config = req.body;
+        const result = await (0, googleAdsService_1.testGoogleAdsConnection)(config);
+        res.json(result);
+    }
+    catch (err) {
+        res.status(500).json({ success: false, message: err.message || String(err) });
+    }
+});
+// Run Keyword Research Pipeline
+app.post("/api/keywords/research", async (req, res) => {
+    try {
+        const { sessionId, userIdeas, googleAdsConfig, useSimulatedMetrics, llmConfig, maxKeywords } = req.body;
+        const data = sessionId ? getSessionAnalysis(sessionId) : null;
+        const contentGaps = data?.contentRatio?.contentGaps || [];
+        const result = await (0, keywordResearcher_1.runKeywordResearch)({
+            userIdeas,
+            contentGaps,
+            googleAdsConfig,
+            useSimulatedMetrics,
+            llmConfig,
+            maxKeywords: maxKeywords ? Number(maxKeywords) : 60
+        });
+        res.json(result);
+    }
+    catch (err) {
+        console.error("Keyword Research Error:", err);
+        res.status(500).json({ error: err.message || String(err) });
+    }
+});
+// Export Keywords to CSV
+app.post("/api/keywords/export-csv", (req, res) => {
+    try {
+        const keywords = req.body.keywords || [];
+        const csv = (0, report_1.generateKeywordsCSV)(keywords);
+        const filename = `nghien-cuu-tu-khoa-${Date.now()}.csv`;
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.send(csv);
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message || String(err) });
+    }
+});
+// Export Keywords to Excel (.xlsx)
+app.post("/api/keywords/export-excel", async (req, res) => {
+    try {
+        const keywords = req.body.keywords || [];
+        const summaryInfo = req.body.summaryInfo;
+        const buffer = await (0, report_1.generateKeywordsExcelWorkbook)(keywords, summaryInfo);
+        const filename = `nghien-cuu-tu-khoa-${Date.now()}.xlsx`;
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.send(buffer);
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message || String(err) });
     }
 });
 app.listen(PORT, () => {

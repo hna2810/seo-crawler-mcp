@@ -896,6 +896,73 @@ assert(dateExtCsv.includes("2024-03-05 14:20"), "External CSV row must contain m
   });
   assert(invalidKeyResult.success === false, "testLLMConnection with empty API key must return success: false");
 
+  // 16. TEST KEYWORD RESEARCH (AI SEED + GOOGLE KEYWORD PLANNER + EXPORT)
+  console.log("\n--- 16. Testing Keyword Research (AI Seed + Google Planner + Export) ---");
+  const { generateSeedKeywords, filterAndRankKeywords, runKeywordResearch } = require("../src/keywords/keywordResearcher");
+  const { testGoogleAdsConnection, generateSimulatedKeywordIdeas } = require("../src/keywords/googleAdsService");
+  const { generateKeywordsCSV, generateKeywordsExcelWorkbook } = require("../src/utils/report");
+
+  // A. Seed generation
+  const mockGaps = [
+    { topic: "DỊCH VỤ MẸ & BÉ", missingSubtopics: ["Tắm bé", "Thông tắc tia sữa"] }
+  ];
+  const seeds = await generateSeedKeywords("massage bầu, chăm sóc mẹ sau sinh", mockGaps);
+  assert(seeds.includes("massage bầu"), "Seeds must contain user idea 'massage bầu'");
+  assert(seeds.some((s: string) => s.includes("tắm bé")), "Seeds must contain content gap subtopic 'tắm bé'");
+
+  // B. Test Google Ads connection validation with missing keys
+  const gadsCheck = await testGoogleAdsConnection({
+    developerToken: "",
+    clientId: "",
+    clientSecret: "",
+    refreshToken: "",
+    customerId: ""
+  });
+  assert(gadsCheck.success === false, "Google Ads check with empty credentials must return false");
+
+  // C. Test simulated ideas generation
+  const simulatedIdeas = generateSimulatedKeywordIdeas(["tắm bé tại nhà", "thông tắc tia sữa"]);
+  assert(simulatedIdeas.length >= 2, "Simulated ideas must produce multiple keywords");
+  assert(simulatedIdeas[0].avgMonthlySearches > 0, "Search volume must be > 0");
+
+  // D. Test filter and rank
+  const curatedKws = filterAndRankKeywords(simulatedIdeas, mockGaps, 30);
+  assert(curatedKws.length > 0, "Curated keywords must be returned");
+  assert(Boolean(curatedKws[0].searchIntent), "Keywords must have Search Intent classified");
+  assert(Boolean(curatedKws[0].matchedTopic), "Keywords must have Matched Topic classified");
+  const gapFound = curatedKws.find((k: any) => k.isContentGap);
+  assert(Boolean(gapFound), "At least one keyword must be identified as filling a Content Gap");
+
+  // E. Test end-to-end runKeywordResearch
+  const researchResult = await runKeywordResearch({
+    userIdeas: "tắm bé tại nhà",
+    contentGaps: mockGaps,
+    useSimulatedMetrics: true,
+    maxKeywords: 20
+  });
+  assert(researchResult.totalFound > 0, "runKeywordResearch must return keywords");
+  assert(researchResult.seedsUsed.length > 0, "Seeds used must be tracked");
+  assert(researchResult.totalSearchVolume > 0, "Total search volume must be > 0");
+  assert(Boolean(researchResult.summary), "Summary must be generated");
+
+  // F. Test CSV and Excel exports
+  const kwCsv = generateKeywordsCSV(researchResult.keywords);
+  assert(kwCsv.includes("Từ Khóa") && kwCsv.includes("Lượt Tìm Kiếm / Tháng"), "Keywords CSV header must be valid");
+  assert(kwCsv.includes("tắm bé"), "Keywords CSV must contain keyword rows");
+
+  const kwExcelBuf = await generateKeywordsExcelWorkbook(researchResult.keywords, {
+    totalVolume: researchResult.totalSearchVolume,
+    seedsCount: researchResult.seedsUsed.length
+  });
+  assert(Buffer.isBuffer(kwExcelBuf) && kwExcelBuf.length > 0, "Excel buffer must be non-empty");
+
+  const kwWb = new ExcelJS.Workbook();
+  await kwWb.xlsx.load(kwExcelBuf);
+  const kwSheet = kwWb.getWorksheet("Nghiên Cứu Từ Khóa");
+  assert(Boolean(kwSheet), "Excel must contain worksheet 'Nghiên Cứu Từ Khóa'");
+  const kwHeaderValues = kwSheet.getRow(4).values as any[];
+  assert(kwHeaderValues[2] === "Từ Khóa", "Column 2 must be 'Từ Khóa'");
+
   console.log(`\n=========================================`);
   console.log(`TESTS FINISHED: ${passed}/${total} PASSED`);
   console.log(`=========================================`);

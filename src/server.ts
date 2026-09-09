@@ -18,10 +18,14 @@ import {
   generateInternalLinksCSV,
   generateExternalLinksCSV,
   generateMarkdownReport,
-  generateComprehensiveExcelWorkbook
+  generateComprehensiveExcelWorkbook,
+  generateKeywordsCSV,
+  generateKeywordsExcelWorkbook
 } from "./utils/report";
 import { POPULAR_MODELS, testLLMConnection, streamLLMAnalysis, LLMConfig } from "./ai/llmService";
 import { buildSEOExpertPrompt } from "./ai/promptBuilder";
+import { testGoogleAdsConnection, GoogleAdsConfig } from "./keywords/googleAdsService";
+import { runKeywordResearch, CuratedKeyword } from "./keywords/keywordResearcher";
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -533,6 +537,73 @@ app.post("/api/ai/analyze", async (req, res) => {
     console.error("AI Analysis error:", err);
     res.write(`data: ${JSON.stringify({ error: err.message || String(err) })}\n\n`);
     res.end();
+  }
+});
+
+// ==========================================
+// KEYWORD RESEARCH (AI + GOOGLE KEYWORD PLANNER) APIS
+// ==========================================
+
+// Test Google Ads API credentials
+app.post("/api/keywords/test-config", async (req, res) => {
+  try {
+    const config: GoogleAdsConfig = req.body;
+    const result = await testGoogleAdsConnection(config);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || String(err) });
+  }
+});
+
+// Run Keyword Research Pipeline
+app.post("/api/keywords/research", async (req, res) => {
+  try {
+    const { sessionId, userIdeas, googleAdsConfig, useSimulatedMetrics, llmConfig, maxKeywords } = req.body;
+    const data = sessionId ? getSessionAnalysis(sessionId as string) : null;
+    const contentGaps = data?.contentRatio?.contentGaps || [];
+
+    const result = await runKeywordResearch({
+      userIdeas,
+      contentGaps,
+      googleAdsConfig,
+      useSimulatedMetrics,
+      llmConfig,
+      maxKeywords: maxKeywords ? Number(maxKeywords) : 60
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("Keyword Research Error:", err);
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Export Keywords to CSV
+app.post("/api/keywords/export-csv", (req, res) => {
+  try {
+    const keywords: CuratedKeyword[] = req.body.keywords || [];
+    const csv = generateKeywordsCSV(keywords);
+    const filename = `nghien-cuu-tu-khoa-${Date.now()}.csv`;
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// Export Keywords to Excel (.xlsx)
+app.post("/api/keywords/export-excel", async (req, res) => {
+  try {
+    const keywords: CuratedKeyword[] = req.body.keywords || [];
+    const summaryInfo = req.body.summaryInfo;
+    const buffer = await generateKeywordsExcelWorkbook(keywords, summaryInfo);
+    const filename = `nghien-cuu-tu-khoa-${Date.now()}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
