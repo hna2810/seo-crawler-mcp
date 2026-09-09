@@ -848,25 +848,21 @@ assert(dateExtCsv.includes("2024-03-05 14:20"), "External CSV row must contain m
   assert(ws6DataRow[4] === "2024-03-01 08:30", `Sheet 6 row 1 published date must match, got '${ws6DataRow[4]}'`);
   assert(ws6DataRow[5] === "2024-03-05 14:20", `Sheet 6 row 1 modified date must match, got '${ws6DataRow[5]}'`);
 
-  // 15. TEST AI PROMPT BUILDER & AGGREGATOR (20-YEAR SEO VETERAN PERSONA)
-  console.log("\n--- 15. Testing AI Prompt Builder & Aggregator (20-Year SEO Veteran Persona) ---");
-  const { buildSEOExpertPrompt, aggregateCrawlStats } = require("../src/ai/promptBuilder");
+  // 15. TEST AI PROMPT BUILDER & AGGREGATOR (CONTENT-ONLY & 20-YEAR SEO VETERAN PERSONA)
+  console.log("\n--- 15. Testing AI Prompt Builder & Aggregator (Content-Only & 20-Year SEO Veteran Persona) ---");
+  const { buildSEOExpertPrompt, aggregateContentStats } = require("../src/ai/promptBuilder");
   const { testLLMConnection } = require("../src/ai/llmService");
 
-  const aggregated = aggregateCrawlStats(
+  const aggregated = aggregateContentStats(
     dateTestSession,
-    auditMock,
-    structureMock,
     ratioMock,
     Object.values(classifications)
   );
 
-  assert(aggregated.totalPages === 2, "Aggregated total pages should be 2");
   assert(aggregated.totalArticles === 2, "Aggregated total articles should be 2");
-  assert(aggregated.avgInternalLinksPerArticle === 0.5, "Average internal links per article should be 0.5");
   assert(aggregated.contentGaps.length > 0, "Aggregated content gaps must be populated");
-  assert(aggregated.articlesWithZeroInlinks === 1, "Articles with 0 inlinks must be detected");
-  assert(aggregated.articlesWithOneInlink === 1, "Articles with 1 inlink must be detected");
+  assert(aggregated.topicBreakdown.length > 0, "Topic breakdown must be populated");
+  assert(aggregated.rootUrl === dateTestSession.rootUrl, "Root URL must match");
 
   const expertPrompts = buildSEOExpertPrompt(
     dateTestSession,
@@ -877,16 +873,18 @@ assert(dateExtCsv.includes("2024-03-05 14:20"), "External CSV row must contain m
   );
 
   assert(expertPrompts.systemPrompt.includes("20 NĂM KINH NGHIỆM"), "System prompt must contain 20 years experience persona");
-  assert(expertPrompts.systemPrompt.includes("QUY ĐỊNH BẮT BUỘC VỀ NỘI DUNG"), "System prompt must contain YMYL content policy rules");
+  assert(expertPrompts.systemPrompt.includes("CHỈ TẬP TRUNG DUY NHẤT VÀO NỘI DUNG"), "System prompt must mandate content-only scope");
+  assert(expertPrompts.systemPrompt.includes("QUY ĐỊNH BẮT BUỘC VỀ VIẾT BÀI VÀ TỪ CẤM"), "System prompt must contain content policy rules");
   assert(expertPrompts.systemPrompt.includes("tốt nhất") && expertPrompts.systemPrompt.includes("chữa bệnh"), "System prompt must specify prohibited words");
-  assert(expertPrompts.systemPrompt.includes("1. ĐÁNH GIÁ TỔNG QUAN HIỆN TRẠNG SEO"), "System prompt must mandate Section 1");
-  assert(expertPrompts.systemPrompt.includes("2. PHÂN TÍCH CONTENT GAP & TỐI ƯU TOPIC CLUSTER"), "System prompt must mandate Section 2 (Content Gap)");
-  assert(expertPrompts.systemPrompt.includes("3. PHÂN TÍCH LINK GAP & KIẾN TRÚC LIÊN KẾT NỘI BỘ"), "System prompt must mandate Section 3 (Link Gap)");
-  assert(expertPrompts.systemPrompt.includes("4. LỘ TRÌNH HÀNH ĐỘNG: TOP VIỆC NÊN LÀM NGAY"), "System prompt must mandate Section 4");
-  assert(expertPrompts.systemPrompt.includes("5. CẢNH BÁO NGUY HIỂM"), "System prompt must mandate Section 5 (What NOT to do)");
+  assert(expertPrompts.systemPrompt.includes("1. ĐÁNH GIÁ TỔNG QUAN HIỆN TRẠNG NỘI DUNG"), "System prompt must mandate Section 1");
+  assert(expertPrompts.systemPrompt.includes("2. PHÂN TÍCH CONTENT GAP & LỖ HỔNG TOPIC CLUSTER"), "System prompt must mandate Section 2 (Content Gap)");
+  assert(expertPrompts.systemPrompt.includes("3. KẾ HOẠCH HÀNH ĐỘNG NỘI DUNG"), "System prompt must mandate Section 3");
+  assert(expertPrompts.systemPrompt.includes("4. CẢNH BÁO NGUY HIỂM"), "System prompt must mandate Section 4");
+  assert(!expertPrompts.systemPrompt.includes("LINK GAP & KIẾN TRÚC LIÊN KẾT NỘI BỘ"), "System prompt must NOT contain technical link gap");
+  assert(!expertPrompts.systemPrompt.includes("TECHNICAL SEO AUDIT"), "System prompt must NOT contain technical audit");
 
   assert(expertPrompts.userPrompt.includes("CONTENT GAPS"), "User prompt must contain Content Gaps data");
-  assert(expertPrompts.userPrompt.includes("LINK GAP"), "User prompt must contain Link Gap data");
+  assert(!expertPrompts.userPrompt.includes("3. CẤU TRÚC ĐỘ SÂU LIÊN KẾT NỘI BỘ"), "User prompt must NOT contain internal link graph");
   assert(expertPrompts.userPrompt.includes("homecaresausinh.com"), "User prompt must contain target site domain");
 
   // Test connection validation with empty API key
