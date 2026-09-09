@@ -20,16 +20,19 @@ async function generateSeedKeywords(userIdeas, contentGaps, llmConfig) {
         rawTokens.forEach(t => seedsSet.add(t));
     }
     // 2. Extract from content gaps
-    if (contentGaps && contentGaps.length > 0) {
+    if (contentGaps && Array.isArray(contentGaps)) {
         for (const gap of contentGaps) {
-            for (const sub of gap.missingSubtopics) {
-                const cleanSub = sub.trim().toLowerCase();
-                if (cleanSub && cleanSub !== "chung" && cleanSub.length > 1) {
-                    seedsSet.add(cleanSub);
-                    // Add natural search prefixes
-                    if (!cleanSub.includes("dịch vụ") && !cleanSub.includes("chăm sóc")) {
-                        seedsSet.add(`dịch vụ ${cleanSub}`);
-                        seedsSet.add(`cách ${cleanSub}`);
+            const subs = gap.missingSubtopics || gap.subtopicsWithZeroArticles || [];
+            if (Array.isArray(subs)) {
+                for (const sub of subs) {
+                    const cleanSub = String(sub).trim().toLowerCase();
+                    if (cleanSub && cleanSub !== "chung" && cleanSub.length > 1) {
+                        seedsSet.add(cleanSub);
+                        // Add natural search prefixes
+                        if (!cleanSub.includes("dịch vụ") && !cleanSub.includes("chăm sóc")) {
+                            seedsSet.add(`dịch vụ ${cleanSub}`);
+                            seedsSet.add(`cách ${cleanSub}`);
+                        }
                     }
                 }
             }
@@ -72,9 +75,12 @@ Trả về DUY NHẤT danh sách từ khóa, mỗi từ một dòng, không đá
 function filterAndRankKeywords(rawKeywords, contentGaps, maxKeywords = 50) {
     // Build set of missing subtopics for fast lookup
     const missingSubtopicsSet = new Set();
-    if (contentGaps) {
+    if (contentGaps && Array.isArray(contentGaps)) {
         contentGaps.forEach(g => {
-            g.missingSubtopics.forEach(s => missingSubtopicsSet.add(s.trim().toLowerCase()));
+            const subs = g.missingSubtopics || g.subtopicsWithZeroArticles || [];
+            if (Array.isArray(subs)) {
+                subs.forEach(s => missingSubtopicsSet.add(String(s).trim().toLowerCase()));
+            }
         });
     }
     const curated = [];

@@ -511,12 +511,13 @@ app.post("/api/keywords/test-config", async (req, res) => {
 // Run Keyword Research Pipeline
 app.post("/api/keywords/research", async (req, res) => {
     try {
-        const { sessionId, userIdeas, googleAdsConfig, useSimulatedMetrics, llmConfig, maxKeywords } = req.body;
+        const { sessionId, userIdeas, enableGaps, googleAdsConfig, useSimulatedMetrics, llmConfig, maxKeywords } = req.body;
         const data = sessionId ? getSessionAnalysis(sessionId) : null;
-        const contentGaps = data?.contentRatio?.contentGaps || [];
+        const contentGaps = (enableGaps !== false && data?.contentRatio?.contentGaps) ? data.contentRatio.contentGaps : [];
         const result = await (0, keywordResearcher_1.runKeywordResearch)({
             userIdeas,
             contentGaps,
+            enableGaps,
             googleAdsConfig,
             useSimulatedMetrics,
             llmConfig,

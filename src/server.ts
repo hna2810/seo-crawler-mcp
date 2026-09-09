@@ -558,13 +558,14 @@ app.post("/api/keywords/test-config", async (req, res) => {
 // Run Keyword Research Pipeline
 app.post("/api/keywords/research", async (req, res) => {
   try {
-    const { sessionId, userIdeas, googleAdsConfig, useSimulatedMetrics, llmConfig, maxKeywords } = req.body;
+    const { sessionId, userIdeas, enableGaps, googleAdsConfig, useSimulatedMetrics, llmConfig, maxKeywords } = req.body;
     const data = sessionId ? getSessionAnalysis(sessionId as string) : null;
-    const contentGaps = data?.contentRatio?.contentGaps || [];
+    const contentGaps = (enableGaps !== false && data?.contentRatio?.contentGaps) ? data.contentRatio.contentGaps : [];
 
     const result = await runKeywordResearch({
       userIdeas,
       contentGaps,
+      enableGaps,
       googleAdsConfig,
       useSimulatedMetrics,
       llmConfig,

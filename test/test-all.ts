@@ -902,9 +902,9 @@ assert(dateExtCsv.includes("2024-03-05 14:20"), "External CSV row must contain m
   const { testGoogleAdsConnection, generateSimulatedKeywordIdeas } = require("../src/keywords/googleAdsService");
   const { generateKeywordsCSV, generateKeywordsExcelWorkbook } = require("../src/utils/report");
 
-  // A. Seed generation
+  // A. Seed generation (supporting both subtopicsWithZeroArticles and missingSubtopics)
   const mockGaps = [
-    { topic: "DỊCH VỤ MẸ & BÉ", missingSubtopics: ["Tắm bé", "Thông tắc tia sữa"] }
+    { topic: "DỊCH VỤ MẸ & BÉ", subtopicsWithZeroArticles: ["Tắm bé", "Thông tắc tia sữa"] }
   ];
   const seeds = await generateSeedKeywords("massage bầu, chăm sóc mẹ sau sinh", mockGaps);
   assert(seeds.includes("massage bầu"), "Seeds must contain user idea 'massage bầu'");

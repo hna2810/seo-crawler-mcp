@@ -2409,6 +2409,7 @@
         const payload = {
           sessionId: currentSessionData ? currentSessionData.sessionId : undefined,
           userIdeas,
+          enableGaps: document.getElementById("kw-enable-gaps").checked,
           useSimulatedMetrics: gadsMode !== "official",
           googleAdsConfig: gadsMode === "official" ? gadsConfig : undefined,
           llmConfig: llmConfig || undefined,

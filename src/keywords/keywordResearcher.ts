@@ -16,9 +16,16 @@ export interface CuratedKeyword {
   aiRecommendation: string;
 }
 
+export interface ContentGapItem {
+  topic: string;
+  missingSubtopics?: string[];
+  subtopicsWithZeroArticles?: string[];
+}
+
 export interface KeywordResearchRequest {
   userIdeas?: string;
-  contentGaps?: { topic: string; missingSubtopics: string[] }[];
+  contentGaps?: ContentGapItem[];
+  enableGaps?: boolean;
   googleAdsConfig?: GoogleAdsConfig;
   useSimulatedMetrics?: boolean;
   llmConfig?: LLMConfig;
@@ -39,7 +46,7 @@ export interface KeywordResearchResponse {
  */
 export async function generateSeedKeywords(
   userIdeas?: string,
-  contentGaps?: { topic: string; missingSubtopics: string[] }[],
+  contentGaps?: ContentGapItem[],
   llmConfig?: LLMConfig
 ): Promise<string[]> {
   const seedsSet = new Set<string>();
@@ -55,16 +62,19 @@ export async function generateSeedKeywords(
   }
 
   // 2. Extract from content gaps
-  if (contentGaps && contentGaps.length > 0) {
+  if (contentGaps && Array.isArray(contentGaps)) {
     for (const gap of contentGaps) {
-      for (const sub of gap.missingSubtopics) {
-        const cleanSub = sub.trim().toLowerCase();
-        if (cleanSub && cleanSub !== "chung" && cleanSub.length > 1) {
-          seedsSet.add(cleanSub);
-          // Add natural search prefixes
-          if (!cleanSub.includes("dịch vụ") && !cleanSub.includes("chăm sóc")) {
-            seedsSet.add(`dịch vụ ${cleanSub}`);
-            seedsSet.add(`cách ${cleanSub}`);
+      const subs = gap.missingSubtopics || gap.subtopicsWithZeroArticles || [];
+      if (Array.isArray(subs)) {
+        for (const sub of subs) {
+          const cleanSub = String(sub).trim().toLowerCase();
+          if (cleanSub && cleanSub !== "chung" && cleanSub.length > 1) {
+            seedsSet.add(cleanSub);
+            // Add natural search prefixes
+            if (!cleanSub.includes("dịch vụ") && !cleanSub.includes("chăm sóc")) {
+              seedsSet.add(`dịch vụ ${cleanSub}`);
+              seedsSet.add(`cách ${cleanSub}`);
+            }
           }
         }
       }
@@ -111,14 +121,17 @@ Trả về DUY NHẤT danh sách từ khóa, mỗi từ một dòng, không đá
  */
 export function filterAndRankKeywords(
   rawKeywords: RawKeywordIdea[],
-  contentGaps?: { topic: string; missingSubtopics: string[] }[],
+  contentGaps?: ContentGapItem[],
   maxKeywords: number = 50
 ): CuratedKeyword[] {
   // Build set of missing subtopics for fast lookup
   const missingSubtopicsSet = new Set<string>();
-  if (contentGaps) {
+  if (contentGaps && Array.isArray(contentGaps)) {
     contentGaps.forEach(g => {
-      g.missingSubtopics.forEach(s => missingSubtopicsSet.add(s.trim().toLowerCase()));
+      const subs = g.missingSubtopics || g.subtopicsWithZeroArticles || [];
+      if (Array.isArray(subs)) {
+        subs.forEach(s => missingSubtopicsSet.add(String(s).trim().toLowerCase()));
+      }
     });
   }
 
