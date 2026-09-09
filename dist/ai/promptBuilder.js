@@ -104,16 +104,14 @@ QUY TẮC PHẠM VI PHÂN TÍCH (QUAN TRỌNG NHẤT):
 - Bạn CHỈ TẬP TRUNG DUY NHẤT VÀO NỘI DUNG (Content, Content Gap, Topic Cluster, Search Intent, Topical Authority, Kế hoạch lên bài và Copywriting).
 - TUYỆT ĐỐI KHÔNG phân tích các lỗi kỹ thuật (không phân tích 404, redirect, server, hosting, crawl depth technical) và KHÔNG phân tích mô hình link kỹ thuật. Toàn bộ trọng tâm dành 100% cho CHIẾN LƯỢC NỘI DUNG.
 
-QUY ĐỊNH BẮT BUỘC VỀ VIẾT BÀI VÀ TỪ CẤM (TUÂN THỦ CHÍNH SÁCH GOOGLE YMYL & QUẢNG CÁO Y TẾ):
-Khi tư vấn nội dung và tiêu đề cho ngành Mẹ & Bé, bạn PHẢI CẢNH BÁO CHỦ WEBSITE và BẢN THÂN BẠN TUYỆT ĐỐI KHÔNG ĐƯỢC DÙNG các từ cấm sau:
-- Danh sách từ cấm: "tốt nhất", "số 1", "duy nhất", "100% hiệu quả", "tuyệt đối", "khỏi", "chữa bệnh", "cam kết", "dứt điểm", "khỏi hoàn toàn", "hoàn toàn", "đảm bảo", "không bao giờ tái phát", "an toàn tuyệt đối", "chữa khỏi", "trị", "điều trị", "chữa trị", "điều trị dứt điểm", "trị tận gốc", "thuốc", "kê đơn", "chẩn đoán", "trắng da sau 1 đêm", "rẻ nhất thị trường".
-- Quy tắc mở bài (Sapo) SEO: Đoạn 1 đánh trực diện vào ý định tìm kiếm và nỗi đau thực tế của mẹ bầu/mẹ sau sinh, chứa từ khóa chính in đậm ở dòng 1. Đoạn 2 nêu giải pháp. TUYỆT ĐỐI CẤM mở bài sáo rỗng kiểu *"Trong xã hội hiện đại ngày nay..."*, *"Nhu cầu tìm hiểu..."*, *"Như chúng ta đã biết..."*.
+QUY CÁCH NỘI DUNG & TIÊU ĐỀ:
+- Tiêu đề (H1 & Title): Đề xuất các tiêu đề tự nhiên, cuốn hút, kích thích click (High-CTR) theo chuẩn SEO hiện đại.
+- Quy tắc mở bài (Sapo) SEO: Đoạn 1 đánh trực diện vào ý định tìm kiếm và nỗi đau thực tế của khách hàng, chứa từ khóa chính in đậm ở dòng 1. Đoạn 2 nêu giải pháp & giá trị thiết thực. TUYỆT ĐỐI CẤM mở bài sáo rỗng kiểu *"Trong xã hội hiện đại ngày nay..."*, *"Nhu cầu tìm hiểu..."*, *"Như chúng ta đã biết..."*.
 
-CẤU TRÚC BÀI PHÂN TÍCH (BẮT BUỘC TRÌNH BÀY ĐẦY ĐỦ 4 MỤC CHUYÊN SÂU NỘI DUNG DƯỚI ĐỊNH DẠNG MARKDOWN TIẾNG VIỆT):
+CẤU TRÚC BÀI PHÂN TÍCH (BẮT BUỘC TRÌNH BÀY ĐẦY ĐỦ 3 MỤC CHUYÊN SÂU NỘI DUNG DƯỚI ĐỊNH DẠNG MARKDOWN TIẾNG VIỆT):
 # 1. ĐÁNH GIÁ TỔNG QUAN HIỆN TRẠNG NỘI DUNG (Content Audit & Health Check)
 # 2. PHÂN TÍCH CONTENT GAP & LỖ HỔNG TOPIC CLUSTER (Chi Tiết Subtopics Đang Bị Bỏ Trống)
-# 3. KẾ HOẠCH HÀNH ĐỘNG NỘI DUNG: DANH SÁCH BÀI VIẾT & CHỦ ĐỀ NÊN VIẾT NGAY (Content Action Plan & Editorial Roadmap)
-# 4. CẢNH BÁO NGUY HIỂM: NHỮNG ĐIỀU TUYỆT ĐỐI KHÔNG ĐƯỢC LÀM TRONG NỘI DUNG (Content Anti-Patterns & Banned Rules)`;
+# 3. KẾ HOẠCH HÀNH ĐỘNG NỘI DUNG: DANH SÁCH BÀI VIẾT & CHỦ ĐỀ NÊN VIẾT NGAY (Content Action Plan & Editorial Roadmap)`;
     const userPrompt = `Dưới đây là TOÀN BỘ DỮ LIỆU NỘI DUNG THỰC TẾ đã thu thập được từ website: ${stats.rootUrl}
 
 ============================================================
@@ -165,7 +163,7 @@ ${item.articles.map(title => `    - "${title}"`).join("\n")}`).join("\n")}
 
 ============================================================
 YÊU CẦU ĐỐI VỚI BẠN (CHUYÊN GIA CHIẾN LƯỢC NỘI DUNG SEO 20 NĂM KINH NGHIỆM):
-Dựa vào các số liệu nội dung thực tế ở trên, hãy đưa ra một bản phân tích chiến lược nội dung chuyên sâu, thực chiến và giá trị cao theo đúng 4 phần đã quy định:
+Dựa vào các số liệu nội dung thực tế ở trên, hãy đưa ra một bản phân tích chiến lược nội dung chuyên sâu, thực chiến và giá trị cao theo đúng 3 phần đã quy định:
 
 1. ĐÁNH GIÁ TỔNG QUAN HIỆN TRẠNG NỘI DUNG (Content Audit & Health Check):
    - Nhận định sắc bén về độ bao phủ và sự thiên lệch chủ đề (Topic dominance vs Topic starvation).
@@ -180,10 +178,6 @@ Dựa vào các số liệu nội dung thực tế ở trên, hãy đưa ra mộ
    - Đề xuất ít nhất 8 - 12 Tiêu đề bài viết cụ thể (Title & H1) để lấp đầy các Content Gaps lớn nhất.
    - Tiêu đề phải cuốn hút, kích thích click (High-CTR) nhưng CHUẨN MỰC, không sáo rỗng.
    - Hướng dẫn cấu trúc Mở bài (Sapo) cuốn hút: đánh trực diện vào nỗi đau thực tế của khách hàng trong 3 giây đầu tiên.
-
-4. CẢNH BÁO NGUY HIỂM: NHỮNG ĐIỀU TUYỆT ĐỐI KHÔNG ĐƯỢC LÀM TRONG NỘI DUNG:
-   - Chỉ ra những sai lầm chết người trong sản xuất nội dung cần dừng lại ngay.
-   - Cảnh báo nghiêm ngặt về danh sách từ cấm y tế/chữa bệnh và các cam kết quảng cáo sai lệch.
 
 Hãy bắt đầu bài phân tích chiến lược nội dung chuyên nghiệp của bạn ngay bây giờ!`;
     return { systemPrompt, userPrompt };

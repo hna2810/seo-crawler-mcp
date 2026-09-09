@@ -874,12 +874,13 @@ assert(dateExtCsv.includes("2024-03-05 14:20"), "External CSV row must contain m
 
   assert(expertPrompts.systemPrompt.includes("20 NĂM KINH NGHIỆM"), "System prompt must contain 20 years experience persona");
   assert(expertPrompts.systemPrompt.includes("CHỈ TẬP TRUNG DUY NHẤT VÀO NỘI DUNG"), "System prompt must mandate content-only scope");
-  assert(expertPrompts.systemPrompt.includes("QUY ĐỊNH BẮT BUỘC VỀ VIẾT BÀI VÀ TỪ CẤM"), "System prompt must contain content policy rules");
-  assert(expertPrompts.systemPrompt.includes("tốt nhất") && expertPrompts.systemPrompt.includes("chữa bệnh"), "System prompt must specify prohibited words");
+  assert(expertPrompts.systemPrompt.includes("QUY CÁCH NỘI DUNG & TIÊU ĐỀ"), "System prompt must contain content & title specs");
+  assert(!expertPrompts.systemPrompt.includes("CẢNH BÁO NGUY HIỂM"), "System prompt must NOT contain danger warning / anti-patterns section");
+  assert(!expertPrompts.systemPrompt.includes("Anti-Patterns"), "System prompt must NOT contain anti-patterns");
   assert(expertPrompts.systemPrompt.includes("1. ĐÁNH GIÁ TỔNG QUAN HIỆN TRẠNG NỘI DUNG"), "System prompt must mandate Section 1");
   assert(expertPrompts.systemPrompt.includes("2. PHÂN TÍCH CONTENT GAP & LỖ HỔNG TOPIC CLUSTER"), "System prompt must mandate Section 2 (Content Gap)");
   assert(expertPrompts.systemPrompt.includes("3. KẾ HOẠCH HÀNH ĐỘNG NỘI DUNG"), "System prompt must mandate Section 3");
-  assert(expertPrompts.systemPrompt.includes("4. CẢNH BÁO NGUY HIỂM"), "System prompt must mandate Section 4");
+  assert(!expertPrompts.systemPrompt.includes("4. CẢNH BÁO NGUY HIỂM"), "System prompt must NOT have Section 4");
   assert(!expertPrompts.systemPrompt.includes("LINK GAP & KIẾN TRÚC LIÊN KẾT NỘI BỘ"), "System prompt must NOT contain technical link gap");
   assert(!expertPrompts.systemPrompt.includes("TECHNICAL SEO AUDIT"), "System prompt must NOT contain technical audit");
 
