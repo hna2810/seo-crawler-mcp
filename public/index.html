@@ -1098,6 +1098,16 @@
 
             <!-- Google Ads API Official Inputs Container -->
             <div id="gads-official-fields" class="hidden space-y-2.5 pt-1 border-t border-dashed border-slate-200">
+              <div class="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-2 text-[11px]">
+                <div class="flex items-center gap-1.5 text-amber-900 font-semibold">
+                  <i class="fa-solid fa-file-code text-amber-600"></i>
+                  <span>File cấu hình có sẵn trên máy:</span>
+                </div>
+                <button type="button" onclick="autoLoadGoogleAdsYaml()" id="btn-load-yaml" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[10px] transition-all flex items-center gap-1 shadow-sm cursor-pointer">
+                  <i class="fa-solid fa-bolt"></i> Nạp từ google-ads.yaml
+                </button>
+              </div>
+
               <div>
                 <label class="block font-semibold text-slate-700 mb-1">Developer Token:</label>
                 <input type="password" id="gads-dev-token" placeholder="Nhập Developer Token từ Google Ads Manager" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg font-mono text-[11px] outline-none">
@@ -2556,13 +2566,47 @@
       };
     }
 
-    function saveGoogleAdsConfig() {
+    async function autoLoadGoogleAdsYaml() {
+      const btn = document.getElementById("btn-load-yaml");
+      const orig = btn ? btn.innerHTML : "";
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang đọc...`;
+      }
+      try {
+        const res = await fetch("/api/keywords/yaml-config");
+        const data = await res.json();
+        if (data.found && data.config) {
+          const c = data.config;
+          if (c.developerToken) document.getElementById("gads-dev-token").value = c.developerToken;
+          if (c.customerId) document.getElementById("gads-customer-id").value = c.customerId;
+          if (c.loginCustomerId) document.getElementById("gads-login-cid").value = c.loginCustomerId;
+          if (c.clientId) document.getElementById("gads-client-id").value = c.clientId;
+          if (c.clientSecret) document.getElementById("gads-client-secret").value = c.clientSecret;
+          if (c.refreshToken) document.getElementById("gads-refresh-token").value = c.refreshToken;
+
+          saveGoogleAdsConfig(true);
+          alert(`✓ Đã tự động đọc và điền đầy đủ 6 thông số từ file:\n${data.filePath}`);
+        } else {
+          alert("Không tìm thấy file google-ads.yaml trên máy tính.");
+        }
+      } catch (err) {
+        alert("Lỗi khi đọc file cấu hình: " + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = orig;
+        }
+      }
+    }
+
+    function saveGoogleAdsConfig(silent = false) {
       try {
         const cfg = getGoogleAdsFormData();
         localStorage.setItem("seo_crawler_gads_config", JSON.stringify(cfg));
-        alert("Đã lưu cấu hình Google Ads API thành công!");
+        if (!silent) alert("Đã lưu cấu hình Google Ads API thành công!");
       } catch (err) {
-        alert("Lỗi khi lưu cấu hình: " + err.message);
+        if (!silent) alert("Lỗi khi lưu cấu hình: " + err.message);
       }
     }
 

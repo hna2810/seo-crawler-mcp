@@ -1,4 +1,7 @@
 import axios from "axios";
+import fs from "fs";
+import path from "path";
+import os from "os";
 
 export interface GoogleAdsConfig {
   developerToken: string;
@@ -18,6 +21,55 @@ export interface RawKeywordIdea {
   competitionIndex: number; // 0 - 100
   lowBidMicros?: number;
   highBidMicros?: number;
+}
+
+/**
+ * Automatically find and load configuration from google-ads.yaml file if present
+ */
+export function loadGoogleAdsYamlConfig(): { found: boolean; filePath?: string; config?: Partial<GoogleAdsConfig> } {
+  const candidatePaths = [
+    path.resolve(process.cwd(), "google-ads.yaml"),
+    path.resolve(process.cwd(), "..", "google-ads.yaml"),
+    path.join(os.homedir(), "google-ads.yaml"),
+    "c:\\Users\\Administrator\\Desktop\\ads\\google-ads.yaml"
+  ];
+
+  for (const p of candidatePaths) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, "utf-8");
+        const parsed: Record<string, string> = {};
+        for (const line of raw.split(/\r?\n/)) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) continue;
+          const idx = trimmed.indexOf(":");
+          if (idx > 0) {
+            const k = trimmed.slice(0, idx).trim();
+            let v = trimmed.slice(idx + 1).trim();
+            if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+              v = v.slice(1, -1);
+            }
+            parsed[k] = v;
+          }
+        }
+
+        const config: Partial<GoogleAdsConfig> = {
+          developerToken: parsed.developer_token || "",
+          clientId: parsed.client_id || "",
+          clientSecret: parsed.client_secret || "",
+          refreshToken: parsed.refresh_token || "",
+          customerId: parsed.customer_id || parsed.login_customer_id || "",
+          loginCustomerId: parsed.login_customer_id || ""
+        };
+
+        return { found: true, filePath: p, config };
+      }
+    } catch {
+      // ignore read error
+    }
+  }
+
+  return { found: false };
 }
 
 /**
@@ -42,8 +94,12 @@ export async function getGoogleAdsAccessToken(config: GoogleAdsConfig): Promise<
     }
     throw new Error("Không nhận được access_token từ Google OAuth2");
   } catch (err: any) {
-    const errMsg = err.response?.data?.error_description || err.response?.data?.error || err.message;
-    throw new Error(`Lỗi xác thực OAuth2 Google Ads: ${errMsg}`);
+    const errCode = err.response?.data?.error || "";
+    const errDesc = err.response?.data?.error_description || err.message;
+    if (errCode === "invalid_grant" || (typeof errDesc === "string" && errDesc.includes("invalid_grant"))) {
+      throw new Error("Mã Refresh Token trong file đã hết hạn (Google OAuth hết hạn sau 7-30 ngày). Bạn chỉ cần dùng Client ID & Client Secret có sẵn để lấy lại Refresh Token mới tại OAuth Playground theo Bước 4!");
+    }
+    throw new Error(`Lỗi xác thực OAuth2 Google Ads: ${errDesc || errCode}`);
   }
 }
 

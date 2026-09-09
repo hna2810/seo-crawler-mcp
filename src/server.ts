@@ -24,7 +24,7 @@ import {
 } from "./utils/report";
 import { POPULAR_MODELS, testLLMConnection, streamLLMAnalysis, LLMConfig } from "./ai/llmService";
 import { buildSEOExpertPrompt } from "./ai/promptBuilder";
-import { testGoogleAdsConnection, GoogleAdsConfig } from "./keywords/googleAdsService";
+import { testGoogleAdsConnection, loadGoogleAdsYamlConfig, GoogleAdsConfig } from "./keywords/googleAdsService";
 import { runKeywordResearch, CuratedKeyword } from "./keywords/keywordResearcher";
 
 const app = express();
@@ -543,6 +543,16 @@ app.post("/api/ai/analyze", async (req, res) => {
 // ==========================================
 // KEYWORD RESEARCH (AI + GOOGLE KEYWORD PLANNER) APIS
 // ==========================================
+
+// Load Google Ads config from google-ads.yaml if present on system
+app.get("/api/keywords/yaml-config", (req, res) => {
+  try {
+    const result = loadGoogleAdsYamlConfig();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ found: false, message: err.message || String(err) });
+  }
+});
 
 // Test Google Ads API credentials
 app.post("/api/keywords/test-config", async (req, res) => {
