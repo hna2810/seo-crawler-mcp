@@ -745,9 +745,113 @@ assert(
   "Internal CSV MUST contain internal link from blockquote"
 );
 
-console.log(`\n=========================================`);
-console.log(`TESTS FINISHED: ${passed}/${total} PASSED`);
-console.log(`=========================================`);
+// 14. TEST PUBLISHED & MODIFIED DATES IN INTERNAL & EXTERNAL LINKS REPORTS
+console.log("\n--- 14. Testing Published & Modified Dates in Internal & External Links Reports ---");
+const { generateComprehensiveExcelWorkbook } = require("../src/utils/report");
+const ExcelJS = require("exceljs");
+
+const dateTestSession: any = {
+  id: "test_date_session",
+  rootUrl: "https://homecaresausinh.com",
+  startTime: new Date().toISOString(),
+  durationMs: 100,
+  options: {},
+  pages: {
+    "https://homecaresausinh.com/bai-viet-ngay-thang": {
+      url: "https://homecaresausinh.com/bai-viet-ngay-thang",
+      finalUrl: "https://homecaresausinh.com/bai-viet-ngay-thang",
+      statusCode: 200,
+      title: "Bài Viết Có Ngày Đăng Và Cập Nhật",
+      publishedTime: "2024-03-01 08:30",
+      modifiedTime: "2024-03-05 14:20",
+      isArticle: true,
+      totalInternalLinks: 1,
+      totalExternalLinks: 1,
+      inlinks: [],
+      outlinks: [
+        {
+          toUrl: "https://homecaresausinh.com/dich-vu-tam-be",
+          anchorText: "dịch vụ tắm bé tại nhà",
+          isExternal: false
+        },
+        {
+          toUrl: "https://youtube.com/watch?v=sample123",
+          anchorText: "xem video thực tế",
+          isExternal: true
+        }
+      ]
+    },
+    "https://homecaresausinh.com/dich-vu-tam-be": {
+      url: "https://homecaresausinh.com/dich-vu-tam-be",
+      finalUrl: "https://homecaresausinh.com/dich-vu-tam-be",
+      statusCode: 200,
+      title: "Dịch Vụ Tắm Bé",
+      isArticle: true,
+      inlinks: [{ fromUrl: "https://homecaresausinh.com/bai-viet-ngay-thang", anchorText: "dịch vụ tắm bé tại nhà" }],
+      outlinks: []
+    }
+  },
+  errors: []
+};
+
+// Check Internal Links CSV
+const dateIntCsv = generateInternalLinksCSV(dateTestSession);
+assert(dateIntCsv.includes("Ngày đăng") && dateIntCsv.includes("Ngày cập nhật cuối"), "Internal CSV header must contain 'Ngày đăng' and 'Ngày cập nhật cuối'");
+assert(dateIntCsv.includes("2024-03-01 08:30"), "Internal CSV row must contain published date '2024-03-01 08:30'");
+assert(dateIntCsv.includes("2024-03-05 14:20"), "Internal CSV row must contain modified date '2024-03-05 14:20'");
+
+// Check External Links CSV
+const dateExtCsv = generateExternalLinksCSV(dateTestSession);
+assert(dateExtCsv.includes("Ngày đăng") && dateExtCsv.includes("Ngày cập nhật cuối"), "External CSV header must contain 'Ngày đăng' and 'Ngày cập nhật cuối'");
+assert(dateExtCsv.includes("2024-03-01 08:30"), "External CSV row must contain published date '2024-03-01 08:30'");
+assert(dateExtCsv.includes("2024-03-05 14:20"), "External CSV row must contain modified date '2024-03-05 14:20'");
+
+// Check Comprehensive Excel Workbook Sheet 5 and Sheet 6
+(async () => {
+  const classifications: any = {};
+  for (const [u, p] of Object.entries(dateTestSession.pages as Record<string, any>)) {
+    if (p.isArticle) {
+      classifications[u] = classifyContent({ title: p.title, url: u });
+    }
+  }
+  const auditMock = performSEOAudit(dateTestSession.pages);
+  const structureMock = buildSiteStructure(dateTestSession.pages, dateTestSession.rootUrl);
+  const ratioMock = computeContentRatio(Object.values(classifications));
+
+  const excelBuffer = await generateComprehensiveExcelWorkbook(
+    dateTestSession,
+    auditMock,
+    structureMock,
+    ratioMock,
+    Object.values(classifications)
+  );
+  assert(Buffer.isBuffer(excelBuffer) && excelBuffer.length > 0, "Excel generator must return non-empty buffer");
+
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(excelBuffer);
+
+  const ws5 = wb.getWorksheet("5. Liên Kết Nội Bộ");
+  assert(Boolean(ws5), "Workbook must have sheet '5. Liên Kết Nội Bộ'");
+  const ws5HeaderRow = ws5.getRow(2).values as any[];
+  assert(ws5HeaderRow[4] === "Ngày đăng", `Sheet 5 column 4 must be 'Ngày đăng', got '${ws5HeaderRow[4]}'`);
+  assert(ws5HeaderRow[5] === "Ngày cập nhật cuối", `Sheet 5 column 5 must be 'Ngày cập nhật cuối', got '${ws5HeaderRow[5]}'`);
+  const ws5DataRow = ws5.getRow(3).values as any[];
+  assert(ws5DataRow[4] === "2024-03-01 08:30", `Sheet 5 row 1 published date must match, got '${ws5DataRow[4]}'`);
+  assert(ws5DataRow[5] === "2024-03-05 14:20", `Sheet 5 row 1 modified date must match, got '${ws5DataRow[5]}'`);
+
+  const ws6 = wb.getWorksheet("6. Liên Kết Ngoài");
+  assert(Boolean(ws6), "Workbook must have sheet '6. Liên Kết Ngoài'");
+  const ws6HeaderRow = ws6.getRow(2).values as any[];
+  assert(ws6HeaderRow[4] === "Ngày đăng", `Sheet 6 column 4 must be 'Ngày đăng', got '${ws6HeaderRow[4]}'`);
+  assert(ws6HeaderRow[5] === "Ngày cập nhật cuối", `Sheet 6 column 5 must be 'Ngày cập nhật cuối', got '${ws6HeaderRow[5]}'`);
+  const ws6DataRow = ws6.getRow(3).values as any[];
+  assert(ws6DataRow[4] === "2024-03-01 08:30", `Sheet 6 row 1 published date must match, got '${ws6DataRow[4]}'`);
+  assert(ws6DataRow[5] === "2024-03-05 14:20", `Sheet 6 row 1 modified date must match, got '${ws6DataRow[5]}'`);
+
+  console.log(`\n=========================================`);
+  console.log(`TESTS FINISHED: ${passed}/${total} PASSED`);
+  console.log(`=========================================`);
+})();
 
 
 

@@ -243,6 +243,8 @@ function generateInternalLinksCSV(session) {
         "STT",
         "URL bài viết nguồn",
         "Title bài viết nguồn",
+        "Ngày đăng",
+        "Ngày cập nhật cuối",
         "Anchor Text",
         "URL đích",
         "Title URL đích",
@@ -285,6 +287,8 @@ function generateInternalLinksCSV(session) {
                 index++,
                 page.url,
                 page.title || page.url,
+                page.publishedTime || "",
+                page.modifiedTime || "",
                 outlink.anchorText || "-",
                 outlink.toUrl,
                 destPage ? destPage.title : "-",
@@ -300,6 +304,8 @@ function generateExternalLinksCSV(session) {
         "STT",
         "URL bài viết nguồn",
         "Title bài viết nguồn",
+        "Ngày đăng",
+        "Ngày cập nhật cuối",
         "Anchor Text",
         "URL đích ngoại bộ (External URL)",
         "Tên miền ngoại bộ (Domain)",
@@ -341,6 +347,8 @@ function generateExternalLinksCSV(session) {
                 index++,
                 page.url,
                 page.title || page.url,
+                page.publishedTime || "",
+                page.modifiedTime || "",
                 outlink.anchorText || "(Không có anchor text)",
                 outlink.toUrl,
                 domain,
@@ -962,7 +970,7 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
         properties: { tabColor: { argb: "FFF59E0B" } },
         views: [{ showGridLines: true, state: "frozen", ySplit: 2 }]
     });
-    ws5.mergeCells("A1:H1");
+    ws5.mergeCells("A1:J1");
     const s5Title = ws5.getCell("A1");
     s5Title.value = "DANH SÁCH LIÊN KẾT NỘI BỘ (INTERNAL LINKS) TỪ BÀI VIẾT & THỐNG KÊ ANCHOR TEXT";
     s5Title.font = { name: "Segoe UI", size: 13, bold: true, color: { argb: "FFFFFFFF" } };
@@ -974,6 +982,8 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
         "STT",
         "URL bài viết nguồn",
         "Title bài viết nguồn",
+        "Ngày đăng",
+        "Ngày cập nhật cuối",
         "Anchor Text",
         "URL đích",
         "Title URL đích",
@@ -987,7 +997,7 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
         c.value = h;
         c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
         c.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FF78350F" } };
-        c.alignment = { vertical: "middle", horizontal: idx === 0 || idx >= 6 ? "center" : "left" };
+        c.alignment = { vertical: "middle", horizontal: idx === 0 || idx === 3 || idx === 4 || idx >= 8 ? "center" : "left" };
         c.border = thinBorder;
     });
     // Map for destination URL lookup
@@ -1029,6 +1039,8 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
             internalLinksList.push({
                 sourceUrl: page.url,
                 sourceTitle: page.title || page.url,
+                publishedTime: page.publishedTime || "",
+                modifiedTime: page.modifiedTime || "",
                 anchorText: anchor,
                 targetUrl: outlink.toUrl,
                 targetTitle,
@@ -1046,6 +1058,8 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
             idx + 1,
             link.sourceUrl,
             link.sourceTitle,
+            link.publishedTime,
+            link.modifiedTime,
             link.anchorText,
             link.targetUrl,
             link.targetTitle,
@@ -1059,13 +1073,15 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
                 c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDFBF7" } };
         });
         r.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
-        r.getCell(7).alignment = { vertical: "middle", horizontal: "center" };
-        r.getCell(8).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(4).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(5).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(9).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(10).alignment = { vertical: "middle", horizontal: "center" };
         if (link.statusCode >= 400) {
-            r.getCell(7).font = { name: "Segoe UI", size: 9, bold: true, color: { argb: RED } };
+            r.getCell(9).font = { name: "Segoe UI", size: 9, bold: true, color: { argb: RED } };
         }
         else if (link.statusCode >= 300) {
-            r.getCell(7).font = { name: "Segoe UI", size: 9, bold: true, color: { argb: AMBER } };
+            r.getCell(9).font = { name: "Segoe UI", size: 9, bold: true, color: { argb: AMBER } };
         }
     });
     const table1EndRow = s5RowIdx;
@@ -1106,15 +1122,17 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
         r.getCell(3).alignment = { vertical: "middle", horizontal: "right" };
         r.getCell(3).numFmt = "0.00%";
     });
-    ws5.autoFilter = "A2:H2";
-    ws5.getColumn(1).width = 28;
+    ws5.autoFilter = "A2:J2";
+    ws5.getColumn(1).width = 8;
     ws5.getColumn(2).width = 45;
     ws5.getColumn(3).width = 35;
-    ws5.getColumn(4).width = 28;
-    ws5.getColumn(5).width = 45;
-    ws5.getColumn(6).width = 35;
-    ws5.getColumn(7).width = 12;
-    ws5.getColumn(8).width = 14;
+    ws5.getColumn(4).width = 18;
+    ws5.getColumn(5).width = 18;
+    ws5.getColumn(6).width = 28;
+    ws5.getColumn(7).width = 45;
+    ws5.getColumn(8).width = 35;
+    ws5.getColumn(9).width = 12;
+    ws5.getColumn(10).width = 14;
     // ----------------------------------------------------
     // SHEET 6: 6. Liên Kết Ngoài (External Links Audit)
     // ----------------------------------------------------
@@ -1122,7 +1140,7 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
         properties: { tabColor: { argb: "FF0D9488" } },
         views: [{ showGridLines: true, state: "frozen", ySplit: 2 }]
     });
-    ws6.mergeCells("A1:G1");
+    ws6.mergeCells("A1:I1");
     const s6Title = ws6.getCell("A1");
     s6Title.value = "DANH SÁCH LIÊN KẾT NGOÀI (EXTERNAL LINKS) TRONG BÀI VIẾT (YOUTUBE, MAPS, MẠNG XÃ HỘI, BÁO CHÍ)";
     s6Title.font = { name: "Segoe UI", size: 13, bold: true, color: { argb: "FFFFFFFF" } };
@@ -1133,6 +1151,8 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
         "STT",
         "URL bài viết nguồn",
         "Title bài viết nguồn",
+        "Ngày đăng",
+        "Ngày cập nhật cuối",
         "Anchor Text",
         "URL đích ngoại bộ (External URL)",
         "Tên miền ngoại bộ (Domain)",
@@ -1145,7 +1165,7 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
         c.value = h;
         c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFCCFBF1" } };
         c.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FF115E59" } };
-        c.alignment = { vertical: "middle", horizontal: idx === 0 || idx >= 5 ? "center" : "left" };
+        c.alignment = { vertical: "middle", horizontal: idx === 0 || idx === 3 || idx === 4 || idx >= 7 ? "center" : "left" };
         c.border = thinBorder;
     });
     const externalLinksList = [];
@@ -1182,6 +1202,8 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
             externalLinksList.push({
                 sourceUrl: page.url,
                 sourceTitle: page.title || page.url,
+                publishedTime: page.publishedTime || "",
+                modifiedTime: page.modifiedTime || "",
                 anchorText: (outlink.anchorText || "").trim() || "(Không có anchor text)",
                 targetUrl: outlink.toUrl,
                 domain,
@@ -1197,6 +1219,8 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
             idx + 1,
             link.sourceUrl,
             link.sourceTitle,
+            link.publishedTime,
+            link.modifiedTime,
             link.anchorText,
             link.targetUrl,
             link.domain,
@@ -1209,17 +1233,21 @@ async function generateComprehensiveExcelWorkbook(session, audit, structure, con
                 c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDFA" } };
         });
         r.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
-        r.getCell(6).alignment = { vertical: "middle", horizontal: "center" };
-        r.getCell(7).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(4).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(5).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(8).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(9).alignment = { vertical: "middle", horizontal: "center" };
     });
-    ws6.autoFilter = "A2:G2";
+    ws6.autoFilter = "A2:I2";
     ws6.getColumn(1).width = 8;
     ws6.getColumn(2).width = 45;
     ws6.getColumn(3).width = 35;
-    ws6.getColumn(4).width = 35;
-    ws6.getColumn(5).width = 50;
-    ws6.getColumn(6).width = 22;
-    ws6.getColumn(7).width = 22;
+    ws6.getColumn(4).width = 18;
+    ws6.getColumn(5).width = 18;
+    ws6.getColumn(6).width = 35;
+    ws6.getColumn(7).width = 50;
+    ws6.getColumn(8).width = 22;
+    ws6.getColumn(9).width = 22;
     // ----------------------------------------------------
     // SHEET 7: 7. Cấu Trúc Website (Hierarchy & Inlinks)
     // ----------------------------------------------------
