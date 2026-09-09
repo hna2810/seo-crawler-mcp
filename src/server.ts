@@ -16,6 +16,7 @@ import {
   generateIssuesCSV,
   generateTopicsCSV,
   generateInternalLinksCSV,
+  generateExternalLinksCSV,
   generateMarkdownReport,
   generateComprehensiveExcelWorkbook
 } from "./utils/report";
@@ -409,6 +410,20 @@ app.get("/api/export/internal-links-csv", (req, res) => {
   let domain = "website";
   try { domain = new URL(data.session.rootUrl).hostname.replace(/[^a-zA-Z0-9.-]/g, "_"); } catch {}
   const filename = `internal-links-${domain}-${Date.now()}.csv`;
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  if (req.query.inline !== "1") {
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  }
+  res.send(csv);
+});
+
+app.get("/api/export/external-links-csv", (req, res) => {
+  const data = getSessionAnalysis(req.query.sessionId as string);
+  if (!data) return res.status(404).send("Chưa có phiên crawl nào.");
+  const csv = generateExternalLinksCSV(data.session);
+  let domain = "website";
+  try { domain = new URL(data.session.rootUrl).hostname.replace(/[^a-zA-Z0-9.-]/g, "_"); } catch {}
+  const filename = `external-links-${domain}-${Date.now()}.csv`;
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   if (req.query.inline !== "1") {
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

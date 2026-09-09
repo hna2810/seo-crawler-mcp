@@ -649,8 +649,105 @@ assert(
   "Link to deleted product redirecting to homepage MUST be flagged as BROKEN_INTERNAL_LINK (Soft 404)"
 );
 
+// 13. TEST BLOCKQUOTE LINKS & EXTERNAL LINKS CSV EXPORT
+console.log("\n--- 13. Testing Blockquote Links & External Links CSV Export ---");
+const { generateExternalLinksCSV } = require("../src/utils/report");
+
+const sampleBqHtml = `
+<html>
+  <body>
+    <article>
+      <h1>3 Gia Đình Review Dịch Vụ Ở Cữ Tại Trung Tâm Home Care</h1>
+      <p>Bài viết chia sẻ trải nghiệm dịch vụ chăm sóc sau sinh.</p>
+      <blockquote>
+        <p><em>Xem nhiều <a href="https://www.youtube.com/playlist?list=PLvH8Db325Kdf6wr1NVHtqFX7DepaNLT9J">video review dịch vụ ở cữ tại trung tâm Home Care Luxury</a> &lt;&lt; tại đây.</em></p>
+      </blockquote>
+      <blockquote>
+        <p>Xem thêm dịch vụ: <a href="https://homecaresausinh.com/dich-vu-tam-be-tai-nha/">Dịch vụ tắm bé tại nhà uy tín</a>.</p>
+      </blockquote>
+    </article>
+  </body>
+</html>
+`;
+
+const parsedBqData = extractPageData(
+  sampleBqHtml,
+  "https://homecaresausinh.com/3-gia-dinh-chia-se-dich-vu-o-cu-tai-trung-tam-home-care",
+  "https://homecaresausinh.com/3-gia-dinh-chia-se-dich-vu-o-cu-tai-trung-tam-home-care",
+  200,
+  "text/html",
+  50,
+  1,
+  "homecaresausinh.com"
+);
+
+assert(
+  parsedBqData.totalInternalLinks === 1,
+  `Internal link in blockquote must be counted (expected 1, got ${parsedBqData.totalInternalLinks})`
+);
+assert(
+  parsedBqData.totalExternalLinks === 1,
+  `External YouTube link in blockquote must be counted (expected 1, got ${parsedBqData.totalExternalLinks})`
+);
+
+const ytLink = parsedBqData.outlinks.find((o: any) => o.toUrl.includes("youtube.com"));
+assert(
+  Boolean(ytLink),
+  "Outlinks must contain YouTube link from blockquote"
+);
+assert(
+  ytLink.anchorText === "video review dịch vụ ở cữ tại trung tâm Home Care Luxury",
+  `Anchor text must match YouTube review link, got: '${ytLink?.anchorText}'`
+);
+
+const intBqLink = parsedBqData.outlinks.find((o: any) => o.toUrl.includes("dich-vu-tam-be-tai-nha"));
+assert(
+  Boolean(intBqLink),
+  "Outlinks must contain internal link from blockquote"
+);
+
+const bqMockSession: any = {
+  id: "test_bq_session",
+  rootUrl: "https://homecaresausinh.com",
+  startTime: new Date().toISOString(),
+  durationMs: 100,
+  options: {},
+  pages: {
+    "https://homecaresausinh.com/3-gia-dinh-chia-se-dich-vu-o-cu-tai-trung-tam-home-care": parsedBqData,
+    "https://homecaresausinh.com/dich-vu-tam-be-tai-nha/": {
+      url: "https://homecaresausinh.com/dich-vu-tam-be-tai-nha/",
+      finalUrl: "https://homecaresausinh.com/dich-vu-tam-be-tai-nha/",
+      statusCode: 200,
+      title: "Dịch Vụ Tắm Bé Tại Nhà",
+      isArticle: true,
+      outlinks: []
+    }
+  }
+};
+
+const extCsvOutput = generateExternalLinksCSV(bqMockSession);
+assert(
+  extCsvOutput.includes("youtube.com"),
+  "External CSV MUST contain domain youtube.com"
+);
+assert(
+  extCsvOutput.includes("video review dịch vụ ở cữ tại trung tâm Home Care Luxury"),
+  "External CSV MUST contain anchor text from blockquote"
+);
+assert(
+  extCsvOutput.includes("Video / YouTube"),
+  "External CSV MUST classify YouTube links properly"
+);
+
+const intCsvFromBq = generateInternalLinksCSV(bqMockSession);
+assert(
+  intCsvFromBq.includes("Dịch vụ tắm bé tại nhà uy tín"),
+  "Internal CSV MUST contain internal link from blockquote"
+);
+
 console.log(`\n=========================================`);
 console.log(`TESTS FINISHED: ${passed}/${total} PASSED`);
 console.log(`=========================================`);
+
 
 

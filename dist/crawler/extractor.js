@@ -117,7 +117,7 @@ function extractPageData(html, url, finalUrl, statusCode, contentType, crawlTime
     });
     // 5. Content extraction for Word Count & Semantic Classification
     // Find the post/article content container without re-parsing the entire HTML tree
-    const $articleTarget = $("article, .entry-content, .post-content, .single-post-content, .content-detail, .post-detail, .td-post-content, main, #main, #content").first();
+    const $articleTarget = $("article, .content-post, .zek_single_content, .entry-content, .post-content, .single-post-content, .content-detail, .post-detail, .td-post-content, main, #main, #content").first();
     let $articleContainer = $articleTarget.length > 0 ? $articleTarget.clone() : $("body").clone();
     // Remove boilerplate & non-content elements from the container clone
     $articleContainer.find("script, style, nav, footer, header, aside, form, svg, noscript, iframe, button, " +
