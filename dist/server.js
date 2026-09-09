@@ -16,6 +16,8 @@ const topicClassifier_1 = require("./classifier/topicClassifier");
 const contentRatio_1 = require("./classifier/contentRatio");
 const taxonomy_1 = require("./config/taxonomy");
 const report_1 = require("./utils/report");
+const llmService_1 = require("./ai/llmService");
+const promptBuilder_1 = require("./ai/promptBuilder");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3333;
 const mcpTransports = new Map();
@@ -442,6 +444,53 @@ app.get("/api/export/json", (req, res) => {
 // List Sessions
 app.get("/api/sessions", (_req, res) => {
     res.json((0, session_1.listSessions)());
+});
+// AI SEO Expert Analysis APIs
+app.get("/api/ai/models", (_req, res) => {
+    res.json(llmService_1.POPULAR_MODELS);
+});
+app.post("/api/ai/test-connection", async (req, res) => {
+    try {
+        const { provider, apiKey, model, baseUrl } = req.body;
+        const result = await (0, llmService_1.testLLMConnection)({ provider, apiKey, model, baseUrl });
+        res.json(result);
+    }
+    catch (err) {
+        res.status(500).json({ success: false, message: err.message || String(err) });
+    }
+});
+app.post("/api/ai/analyze", async (req, res) => {
+    const { sessionId, provider, apiKey, model, baseUrl } = req.body;
+    const data = getSessionAnalysis(sessionId);
+    if (!data) {
+        return res.status(404).json({ error: "Chưa có phiên crawl nào hoặc phiên không tồn tại." });
+    }
+    // Set SSE Headers
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    if (typeof res.flushHeaders === "function") {
+        res.flushHeaders();
+    }
+    try {
+        const { systemPrompt, userPrompt } = (0, promptBuilder_1.buildSEOExpertPrompt)(data.session, data.audit, data.structure, data.contentRatio, data.classifications);
+        const config = {
+            provider: provider || "gemini",
+            apiKey: (apiKey || "").trim(),
+            model: (model || "").trim(),
+            baseUrl: baseUrl ? baseUrl.trim() : undefined
+        };
+        await (0, llmService_1.streamLLMAnalysis)(config, systemPrompt, userPrompt, (chunk) => {
+            res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+        });
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
+    }
+    catch (err) {
+        console.error("AI Analysis error:", err);
+        res.write(`data: ${JSON.stringify({ error: err.message || String(err) })}\n\n`);
+        res.end();
+    }
 });
 app.listen(PORT, () => {
     console.log(`====================================================`);

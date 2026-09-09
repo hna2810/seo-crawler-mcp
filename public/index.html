@@ -6,11 +6,25 @@
   <title>SEO Crawler & Mother-Baby Content Classifier Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
     body { font-family: "Inter", sans-serif; }
     .tab-btn.active { border-color: #2563eb; color: #1d4ed8; background-color: #eff6ff; }
+    .ai-markdown-body h1 { font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.35rem; }
+    .ai-markdown-body h2 { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .ai-markdown-body h3 { font-size: 0.95rem; font-weight: 600; color: #334155; margin-top: 1.0rem; margin-bottom: 0.35rem; }
+    .ai-markdown-body p { margin-bottom: 0.85rem; line-height: 1.65; color: #334155; font-size: 0.875rem; }
+    .ai-markdown-body ul, .ai-markdown-body ol { margin-left: 1.5rem; margin-bottom: 0.85rem; list-style-type: disc; font-size: 0.875rem; }
+    .ai-markdown-body ol { list-style-type: decimal; }
+    .ai-markdown-body li { margin-bottom: 0.35rem; line-height: 1.55; }
+    .ai-markdown-body strong { color: #0f172a; font-weight: 700; }
+    .ai-markdown-body blockquote { border-left: 4px solid #8b5cf6; padding-left: 1rem; margin: 1rem 0; background: #f5f3ff; padding: 0.75rem 1rem; border-radius: 0.5rem; color: #4c1d95; }
+    .ai-markdown-body table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.825rem; }
+    .ai-markdown-body th, .ai-markdown-body td { border: 1px solid #cbd5e1; padding: 0.5rem 0.75rem; text-align: left; }
+    .ai-markdown-body th { background: #f1f5f9; font-weight: 600; color: #1e293b; }
+    .ai-markdown-body code { background: #f1f5f9; color: #e11d48; padding: 0.15rem 0.35rem; border-radius: 0.25rem; font-size: 0.85em; font-family: monospace; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
@@ -68,6 +82,10 @@
       <button onclick="switchTab('export')" id="tab-export-btn" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg border-b-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
         <i class="fa-solid fa-file-arrow-down text-violet-600"></i> Xuất Dữ Liệu (Export Center)
         <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold">Excel + 6 Báo Cáo</span>
+      </button>
+      <button onclick="switchTab('ai')" id="tab-ai-btn" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg border-b-2 text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> Phân Tích AI (LLM)
+        <span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-full font-bold">Chuyên Gia 20 Năm</span>
       </button>
     </div>
   </div>
@@ -829,6 +847,205 @@
 
     </div>
 
+    <!-- TAB 7: PHÂN TÍCH CHUYÊN GIA AI / LLM -->
+    <div id="tab-ai" class="space-y-6 hidden">
+      
+      <!-- Top Banner -->
+      <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <div class="relative z-10 max-w-3xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold mb-3">
+            <i class="fa-solid fa-brain"></i> AI SEO Strategist Engine • Senior Director 20+ Năm Kinh Nghiệm
+          </div>
+          <h2 class="text-xl md:text-2xl font-extrabold tracking-tight mb-2">
+            Phân Tích Toàn Diện Website & Chiến Lược Thực Thi Bằng AI
+          </h2>
+          <p class="text-xs md:text-sm text-slate-300 leading-relaxed">
+            AI đóng vai trò như một <strong>Giám đốc SEO 20 năm kinh nghiệm</strong>, tổng hợp toàn bộ dữ liệu Crawl, Technical Audit, <strong>Content Gap</strong> (chủ đề con còn trống) và <strong>Link Gap</strong> (bài viết bị đói inlinks) để chỉ ra chính xác: <span class="text-emerald-400 font-semibold">Nên làm gì</span>, <span class="text-rose-400 font-semibold">Tuyệt đối không nên làm gì</span> và chiến lược Topic Authority bứt phá.
+          </p>
+        </div>
+      </div>
+
+      <!-- LLM Configuration Card -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm">
+              <i class="fa-solid fa-key"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Thiết Lập API LLM (Google Gemini, OpenAI, Claude, OpenRouter, Tùy chọn)</h3>
+              <p class="text-xs text-slate-500">API Key của bạn được lưu trữ an toàn ngay trên trình duyệt (LocalStorage) và không gửi đi đâu khác</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="ai-conn-status" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+            <button onclick="testAIConnection()" id="ai-test-btn" type="button" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-plug"></i> Thử kết nối
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nhà cung cấp (Provider)</label>
+            <select id="ai-provider" onchange="onAIProviderChange()" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500">
+              <option value="gemini" selected>Google Gemini (Khuyên dùng - Nhanh, Token lớn)</option>
+              <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
+              <option value="openrouter">OpenRouter (Gemini, Claude, GPT, DeepSeek...)</option>
+              <option value="claude">Anthropic Claude (Claude 3.7 / 3.5 Sonnet)</option>
+              <option value="custom">Tùy chỉnh / OpenAI Compatible (DeepSeek, Groq, Ollama...)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Mô hình (Model)</label>
+            <div class="relative">
+              <input type="text" id="ai-model" list="ai-model-list" placeholder="Chọn hoặc nhập tên model..." value="gemini-2.5-flash"
+                class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+              <datalist id="ai-model-list">
+                <option value="gemini-2.5-flash">gemini-2.5-flash (Nhanh & Thông minh)</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro (Sâu sắc nhất)</option>
+                <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+              </datalist>
+            </div>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span>API Key (Bắt buộc)</span>
+              <a id="ai-key-link" href="https://aistudio.google.com/app/apikey" target="_blank" class="text-purple-600 hover:text-purple-800 text-[11px] font-semibold flex items-center gap-1">
+                Lấy API Key miễn phí <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
+            </label>
+            <div class="relative">
+              <input type="password" id="ai-api-key" placeholder="Nhập API key (AIzaSy... hoặc sk-...)"
+                class="w-full pl-3 pr-10 py-2.5 rounded-xl border border-slate-300 text-xs font-mono outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+              <button type="button" onclick="toggleAIKeyVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer">
+                <i id="ai-key-eye-icon" class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="ai-custom-url-row" class="hidden pt-1">
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Custom Base URL (Tùy chọn)</label>
+          <input type="url" id="ai-base-url" placeholder="Ví dụ: https://api.deepseek.com/v1 hoặc http://localhost:11434/v1"
+            class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+        </div>
+
+        <div class="flex items-center justify-between pt-1 text-xs">
+          <label class="flex items-center gap-2 cursor-pointer select-none text-slate-600 font-medium">
+            <input type="checkbox" id="ai-remember-key" checked class="rounded text-purple-600 focus:ring-purple-500 w-4 h-4">
+            <span>Ghi nhớ API Key & Model trên trình duyệt này</span>
+          </label>
+          <span class="text-slate-400 text-[11px]"><i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i>Bảo mật: Key chỉ lưu tại LocalStorage thiết bị này</span>
+        </div>
+      </div>
+
+      <!-- Action & Current Session Info Bar -->
+      <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl border border-purple-200 p-5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+            <i class="fa-solid fa-chart-line"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-slate-500 uppercase">Website đang phân tích:</span>
+              <span id="ai-target-domain" class="text-sm font-extrabold text-slate-900">(Chưa có phiên crawl nào)</span>
+            </div>
+            <p id="ai-target-meta" class="text-xs text-slate-600 mt-0.5">Vui lòng quét website trước hoặc chọn phiên đã quét ở góc trên bên phải</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="ai-stop-btn" onclick="abortAIAnalysis()" type="button" disabled class="hidden px-4 py-2.5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-stop"></i> Dừng tạo
+          </button>
+          <button id="ai-start-btn" onclick="handleStartAIAnalysis()" type="button" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-purple-500/25 flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Bắt đầu phân tích AI
+          </button>
+        </div>
+      </div>
+
+      <!-- AI Analysis Result Card -->
+      <div id="ai-result-card" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+        
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <span id="ai-live-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-file-lines text-purple-600"></i> Báo Cáo Phân Tích Chuyên Gia SEO 20 Năm Kinh Nghiệm
+            </h3>
+            <span id="ai-stream-status" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Sẵn sàng</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="copyAIMarkdown()" id="ai-copy-btn" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-copy"></i> Sao chép Markdown
+            </button>
+            <button onclick="downloadAIReport()" id="ai-download-btn" class="px-3 py-1.5 text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-download"></i> Tải báo cáo (.md)
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div id="ai-progress-bar-container" class="hidden space-y-2">
+          <div class="flex items-center justify-between text-xs font-semibold text-purple-700">
+            <span id="ai-progress-text"><i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i>Đang khởi động phân tích...</span>
+            <span id="ai-word-count-badge" class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-[11px]">0 từ</span>
+          </div>
+          <div class="w-full bg-purple-100 h-1.5 rounded-full overflow-hidden">
+            <div class="bg-gradient-to-r from-purple-500 to-indigo-600 h-full w-full animate-pulse"></div>
+          </div>
+        </div>
+
+        <!-- Output Content Placeholder -->
+        <div id="ai-output-empty-placeholder" class="py-12 px-4 text-center space-y-6">
+          <div class="w-16 h-16 mx-auto rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl shadow-inner">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div class="max-w-xl mx-auto space-y-2">
+            <h4 class="text-base font-bold text-slate-800">Chưa có bản phân tích nào</h4>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Nhập API Key ở trên và bấm nút <strong>"Bắt đầu phân tích AI"</strong> để chuyên gia SEO 20 năm kinh nghiệm tổng hợp toàn bộ bức tranh website: Content Gap, Link Gap, phân tích kỹ thuật và lộ trình hành động.
+            </p>
+          </div>
+
+          <!-- Feature Cards Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left max-w-4xl mx-auto pt-2">
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+              <div class="text-rose-600 font-bold text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved"></i> 1. Kỹ Thuật & Sức Khỏe Web
+              </div>
+              <p class="text-[11px] text-slate-600 leading-relaxed">Đánh giá 404, Soft 404, trùng lặp tiêu đề/nội dung, độ sâu crawl và cấu trúc trang.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+              <div class="text-emerald-600 font-bold text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-chart-pie"></i> 2. Content Gap Mẹ & Bé
+              </div>
+              <p class="text-[11px] text-slate-600 leading-relaxed">Chỉ rõ những chủ đề con bị bỏ trống (0 bài viết) cần sản xuất để chiếm lĩnh Topical Authority.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+              <div class="text-indigo-600 font-bold text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-link"></i> 3. Link Gap & PageRank Silo
+              </div>
+              <p class="text-[11px] text-slate-600 leading-relaxed">Phát hiện bài viết bị cô lập (0-1 inlink), xử lý anchor text chung chung ('tại đây') và điều hướng luồng sức mạnh.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rendered Markdown Body -->
+        <div id="ai-rendered-output" class="hidden ai-markdown-body p-6 bg-slate-50/50 rounded-2xl border border-slate-200/80 max-h-[750px] overflow-y-auto font-normal"></div>
+
+      </div>
+
+    </div>
+
     <!-- MODAL TEST 1 TỪ KHÓA ĐƠN LẺ (DÀNH CHO TEST NHANH, KHÔNG ẢNH HƯỞNG GIAO DIỆN CHÍNH) -->
     <div id="single-tool-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
@@ -860,7 +1077,7 @@
     let eventSource = null;
 
     function switchTab(tabId) {
-      const tabs = ["crawl", "structure", "topics", "audit", "articles", "export"];
+      const tabs = ["crawl", "structure", "topics", "audit", "articles", "export", "ai"];
       tabs.forEach(t => {
         const el = document.getElementById("tab-" + t);
         const btn = document.getElementById("tab-" + t + "-btn");
@@ -877,6 +1094,10 @@
       if (targetBtn) {
         targetBtn.classList.add("active", "border-blue-600", "text-blue-700", "bg-blue-50");
         targetBtn.classList.remove("text-slate-600");
+      }
+
+      if (tabId === "ai" && currentSessionData) {
+        updateAITargetInfo(currentSessionData);
       }
     }
 
@@ -1102,6 +1323,8 @@
       if (expBadge && data.sessionId) {
         expBadge.innerText = `Phiên: ${data.sessionId} (${data.totalPages} URL)`;
       }
+
+      updateAITargetInfo(data);
 
       // Badges
       const bStruct = document.getElementById("badge-structure-count");
@@ -1376,9 +1599,404 @@
       }
     }
 
+    // ==========================================
+    // TAB AI: SEO EXPERT ANALYSIS FUNCTIONS
+    // ==========================================
+    let aiAbortController = null;
+    let currentAIMarkdown = "";
+
+    const AI_PRESETS = {
+      gemini: {
+        models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+        link: "https://aistudio.google.com/app/apikey",
+        linkText: "Lấy API Key Google AI Studio miễn phí",
+        defaultModel: "gemini-2.5-flash",
+        showBaseUrl: false
+      },
+      openai: {
+        models: ["gpt-4o", "gpt-4o-mini", "gpt-4.5-preview", "o3-mini"],
+        link: "https://platform.openai.com/api-keys",
+        linkText: "Lấy API Key OpenAI",
+        defaultModel: "gpt-4o-mini",
+        showBaseUrl: false
+      },
+      openrouter: {
+        models: ["google/gemini-2.5-pro", "google/gemini-2.5-flash", "anthropic/claude-3.7-sonnet", "openai/gpt-4o", "deepseek/deepseek-chat"],
+        link: "https://openrouter.ai/keys",
+        linkText: "Lấy API Key OpenRouter",
+        defaultModel: "google/gemini-2.5-flash",
+        showBaseUrl: false
+      },
+      claude: {
+        models: ["claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
+        link: "https://console.anthropic.com/settings/keys",
+        linkText: "Lấy API Key Anthropic Console",
+        defaultModel: "claude-3-7-sonnet-20250219",
+        showBaseUrl: false
+      },
+      custom: {
+        models: ["deepseek-chat", "deepseek-r1", "llama3.3-70b", "custom-model"],
+        link: "https://platform.deepseek.com/api_keys",
+        linkText: "DeepSeek / Local LLM Docs",
+        defaultModel: "deepseek-chat",
+        showBaseUrl: true
+      }
+    };
+
+    function updateAITargetInfo(data) {
+      if (!data) return;
+      const targetDomainEl = document.getElementById("ai-target-domain");
+      const targetMetaEl = document.getElementById("ai-target-meta");
+      if (targetDomainEl) {
+        let domain = data.rootUrl || `Phiên #${data.sessionId}`;
+        try { domain = new URL(data.rootUrl).hostname; } catch {}
+        targetDomainEl.innerText = domain;
+      }
+      if (targetMetaEl) {
+        const totalArticles = data.contentRatio ? data.contentRatio.totalArticles : (data.classifications ? Object.keys(data.classifications).length : 0);
+        const issuesCount = data.audit ? data.audit.totalIssues : 0;
+        targetMetaEl.innerText = `Đã quét ${data.totalPages} trang • ${totalArticles} bài viết nội dung • ${issuesCount} lỗi kỹ thuật phát hiện`;
+      }
+    }
+
+    function toggleAIKeyVisibility() {
+      const input = document.getElementById("ai-api-key");
+      const icon = document.getElementById("ai-key-eye-icon");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.className = "fa-solid fa-eye-slash";
+      } else {
+        input.type = "password";
+        icon.className = "fa-solid fa-eye";
+      }
+    }
+
+    function onAIProviderChange() {
+      const provider = document.getElementById("ai-provider").value;
+      const preset = AI_PRESETS[provider] || AI_PRESETS.gemini;
+
+      // Update model list datalist
+      const listEl = document.getElementById("ai-model-list");
+      listEl.innerHTML = preset.models.map(m => `<option value="${m}">${m}</option>`).join("");
+
+      // Update model value if empty or invalid
+      const modelInput = document.getElementById("ai-model");
+      if (!modelInput.value || !preset.models.includes(modelInput.value)) {
+        modelInput.value = preset.defaultModel;
+      }
+
+      // Update link
+      const linkEl = document.getElementById("ai-key-link");
+      linkEl.href = preset.link;
+      linkEl.innerHTML = `${preset.linkText} <i class="fa-solid fa-arrow-up-right-from-square"></i>`;
+
+      // Update Base URL visibility
+      const customRow = document.getElementById("ai-custom-url-row");
+      if (preset.showBaseUrl) {
+        customRow.classList.remove("hidden");
+      } else {
+        customRow.classList.add("hidden");
+      }
+
+      // Load saved key for this provider if exists
+      loadAISettings();
+    }
+
+    function loadAISettings() {
+      try {
+        const saved = localStorage.getItem("seo_crawler_ai_settings");
+        if (saved) {
+          const cfg = JSON.parse(saved);
+          if (cfg.provider) {
+            document.getElementById("ai-provider").value = cfg.provider;
+          }
+          if (cfg.model) {
+            document.getElementById("ai-model").value = cfg.model;
+          }
+          const activeProvider = document.getElementById("ai-provider").value;
+          if (cfg.keys && cfg.keys[activeProvider]) {
+            document.getElementById("ai-api-key").value = cfg.keys[activeProvider];
+          }
+          if (cfg.baseUrl) {
+            document.getElementById("ai-base-url").value = cfg.baseUrl;
+          }
+          const preset = AI_PRESETS[activeProvider] || AI_PRESETS.gemini;
+          const customRow = document.getElementById("ai-custom-url-row");
+          if (preset.showBaseUrl) {
+            customRow.classList.remove("hidden");
+          } else {
+            customRow.classList.add("hidden");
+          }
+        }
+      } catch {}
+    }
+
+    function saveAISettings() {
+      const remember = document.getElementById("ai-remember-key").checked;
+      if (!remember) return;
+
+      const provider = document.getElementById("ai-provider").value;
+      const model = document.getElementById("ai-model").value.trim();
+      const apiKey = document.getElementById("ai-api-key").value.trim();
+      const baseUrl = document.getElementById("ai-base-url").value.trim();
+
+      try {
+        let current = {};
+        const saved = localStorage.getItem("seo_crawler_ai_settings");
+        if (saved) current = JSON.parse(saved);
+
+        if (!current.keys) current.keys = {};
+        if (apiKey) current.keys[provider] = apiKey;
+        current.provider = provider;
+        current.model = model;
+        current.baseUrl = baseUrl;
+
+        localStorage.setItem("seo_crawler_ai_settings", JSON.stringify(current));
+      } catch {}
+    }
+
+    async function testAIConnection() {
+      const provider = document.getElementById("ai-provider").value;
+      const model = document.getElementById("ai-model").value.trim();
+      const apiKey = document.getElementById("ai-api-key").value.trim();
+      const baseUrl = document.getElementById("ai-base-url").value.trim();
+
+      if (!apiKey) {
+        alert("Vui lòng nhập API Key để kiểm tra kết nối.");
+        document.getElementById("ai-api-key").focus();
+        return;
+      }
+
+      const btn = document.getElementById("ai-test-btn");
+      const statusEl = document.getElementById("ai-conn-status");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Đang thử...`;
+      statusEl.classList.add("hidden");
+
+      try {
+        const res = await fetch("/api/ai/test-connection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider, apiKey, model, baseUrl })
+        });
+        const data = await res.json();
+        statusEl.classList.remove("hidden");
+        if (data.success) {
+          statusEl.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+          statusEl.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Kết nối thành công!`;
+          saveAISettings();
+        } else {
+          statusEl.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200";
+          statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> ${data.message || "Thất bại"}`;
+        }
+      } catch (err) {
+        statusEl.classList.remove("hidden");
+        statusEl.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200";
+        statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Lỗi: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-plug"></i> Thử kết nối`;
+      }
+    }
+
+    async function handleStartAIAnalysis() {
+      if (!currentSessionData || !currentSessionData.sessionId) {
+        alert("Chưa có dữ liệu phiên quét nào. Vui lòng quét website trước hoặc chọn phiên từ danh sách lịch sử!");
+        return;
+      }
+
+      const provider = document.getElementById("ai-provider").value;
+      const model = document.getElementById("ai-model").value.trim();
+      const apiKey = document.getElementById("ai-api-key").value.trim();
+      const baseUrl = document.getElementById("ai-base-url").value.trim();
+
+      if (!apiKey) {
+        alert("Vui lòng nhập API Key để chuyên gia AI có thể phân tích.");
+        document.getElementById("ai-api-key").focus();
+        return;
+      }
+
+      saveAISettings();
+
+      const startBtn = document.getElementById("ai-start-btn");
+      const stopBtn = document.getElementById("ai-stop-btn");
+      const progressContainer = document.getElementById("ai-progress-bar-container");
+      const progressText = document.getElementById("ai-progress-text");
+      const wordCountBadge = document.getElementById("ai-word-count-badge");
+      const placeholder = document.getElementById("ai-output-empty-placeholder");
+      const renderedOutput = document.getElementById("ai-rendered-output");
+      const liveIndicator = document.getElementById("ai-live-indicator");
+      const streamStatus = document.getElementById("ai-stream-status");
+
+      startBtn.disabled = true;
+      startBtn.classList.add("opacity-50");
+      stopBtn.classList.remove("hidden");
+      stopBtn.disabled = false;
+
+      progressContainer.classList.remove("hidden");
+      progressText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i>Đang tổng hợp số liệu crawl và kết nối chuyên gia AI...`;
+      placeholder.classList.add("hidden");
+      renderedOutput.classList.remove("hidden");
+      renderedOutput.innerHTML = `<div class="text-slate-400 italic text-xs py-4 text-center"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Đang chuẩn bị nhận luồng phân tích thời gian thực...</div>`;
+
+      liveIndicator.className = "w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse";
+      streamStatus.className = "text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800";
+      streamStatus.innerText = "Đang phân tích...";
+
+      currentAIMarkdown = "";
+      aiAbortController = new AbortController();
+
+      try {
+        const response = await fetch("/api/ai/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: currentSessionData.sessionId,
+            provider,
+            apiKey,
+            model,
+            baseUrl
+          }),
+          signal: aiAbortController.signal
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Lỗi máy chủ (${response.status}): ${errText}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        let wordCount = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith("data:")) continue;
+            const dataStr = trimmed.slice(5).trim();
+            if (!dataStr) continue;
+
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+              if (parsed.chunk) {
+                currentAIMarkdown += parsed.chunk;
+                wordCount = currentAIMarkdown.trim().split(/\s+/).length;
+                wordCountBadge.innerText = `${wordCount} từ`;
+                progressText.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-1.5 text-purple-600"></i>Chuyên gia SEO đang phân tích... (${wordCount} từ)`;
+                
+                // Render markdown
+                if (typeof marked !== "undefined") {
+                  renderedOutput.innerHTML = marked.parse(currentAIMarkdown);
+                } else {
+                  renderedOutput.innerText = currentAIMarkdown;
+                }
+              }
+              if (parsed.done) {
+                break;
+              }
+            } catch (jsonErr) {
+              if (jsonErr.message && !jsonErr.message.includes("JSON")) {
+                throw jsonErr;
+              }
+            }
+          }
+        }
+
+        // Final render
+        if (typeof marked !== "undefined") {
+          renderedOutput.innerHTML = marked.parse(currentAIMarkdown);
+        } else {
+          renderedOutput.innerText = currentAIMarkdown;
+        }
+
+        liveIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+        streamStatus.className = "text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
+        streamStatus.innerText = "Hoàn tất";
+        progressText.innerHTML = `<i class="fa-solid fa-check mr-1.5 text-emerald-600"></i>Hoàn tất bài phân tích chuyên gia SEO (${wordCount} từ)!`;
+
+      } catch (err) {
+        if (err.name === "AbortError") {
+          liveIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+          streamStatus.className = "text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800";
+          streamStatus.innerText = "Đã dừng";
+          progressText.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1.5 text-amber-600"></i>Đã dừng phân tích theo lệnh người dùng.`;
+        } else {
+          liveIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+          streamStatus.className = "text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800";
+          streamStatus.innerText = "Lỗi";
+          progressText.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1.5 text-rose-600"></i>Lỗi phân tích: ${err.message}`;
+          renderedOutput.innerHTML += `
+            <div class="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 mt-4">
+              <strong>Lỗi trong quá trình xử lý AI:</strong> ${err.message}
+            </div>
+          `;
+        }
+      } finally {
+        startBtn.disabled = false;
+        startBtn.classList.remove("opacity-50");
+        stopBtn.classList.add("hidden");
+        aiAbortController = null;
+      }
+    }
+
+    function abortAIAnalysis() {
+      if (aiAbortController) {
+        aiAbortController.abort();
+      }
+    }
+
+    function copyAIMarkdown() {
+      if (!currentAIMarkdown || !currentAIMarkdown.trim()) {
+        alert("Chưa có nội dung phân tích để sao chép.");
+        return;
+      }
+      navigator.clipboard.writeText(currentAIMarkdown).then(() => {
+        const btn = document.getElementById("ai-copy-btn");
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> Đã sao chép!`;
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      }).catch(err => {
+        alert("Không thể sao chép: " + err.message);
+      });
+    }
+
+    function downloadAIReport() {
+      if (!currentAIMarkdown || !currentAIMarkdown.trim()) {
+        alert("Chưa có nội dung phân tích để tải về.");
+        return;
+      }
+      let domain = "website";
+      try {
+        if (currentSessionData && currentSessionData.rootUrl) {
+          domain = new URL(currentSessionData.rootUrl).hostname.replace(/[^a-zA-Z0-9.-]/g, "_");
+        }
+      } catch {}
+      const blob = new Blob([currentAIMarkdown], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bao-cao-chien-luoc-seo-ai-20-nam-${domain}-${Date.now()}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     // Auto-load latest session on page load
     window.addEventListener("DOMContentLoaded", async () => {
       loadSessionsList();
+      loadAISettings();
       try {
         const res = await fetch("/api/session/latest");
         if (res.ok) {

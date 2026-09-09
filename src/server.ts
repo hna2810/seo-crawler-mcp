@@ -20,6 +20,8 @@ import {
   generateMarkdownReport,
   generateComprehensiveExcelWorkbook
 } from "./utils/report";
+import { POPULAR_MODELS, testLLMConnection, streamLLMAnalysis, LLMConfig } from "./ai/llmService";
+import { buildSEOExpertPrompt } from "./ai/promptBuilder";
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -473,6 +475,65 @@ app.get("/api/export/json", (req, res) => {
 // List Sessions
 app.get("/api/sessions", (_req, res) => {
   res.json(listSessions());
+});
+
+// AI SEO Expert Analysis APIs
+app.get("/api/ai/models", (_req, res) => {
+  res.json(POPULAR_MODELS);
+});
+
+app.post("/api/ai/test-connection", async (req, res) => {
+  try {
+    const { provider, apiKey, model, baseUrl } = req.body;
+    const result = await testLLMConnection({ provider, apiKey, model, baseUrl });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || String(err) });
+  }
+});
+
+app.post("/api/ai/analyze", async (req, res) => {
+  const { sessionId, provider, apiKey, model, baseUrl } = req.body;
+  const data = getSessionAnalysis(sessionId as string);
+  if (!data) {
+    return res.status(404).json({ error: "Chưa có phiên crawl nào hoặc phiên không tồn tại." });
+  }
+
+  // Set SSE Headers
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  if (typeof (res as any).flushHeaders === "function") {
+    (res as any).flushHeaders();
+  }
+
+  try {
+    const { systemPrompt, userPrompt } = buildSEOExpertPrompt(
+      data.session,
+      data.audit,
+      data.structure,
+      data.contentRatio,
+      data.classifications
+    );
+
+    const config: LLMConfig = {
+      provider: provider || "gemini",
+      apiKey: (apiKey || "").trim(),
+      model: (model || "").trim(),
+      baseUrl: baseUrl ? baseUrl.trim() : undefined
+    };
+
+    await streamLLMAnalysis(config, systemPrompt, userPrompt, (chunk: string) => {
+      res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+    });
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  } catch (err: any) {
+    console.error("AI Analysis error:", err);
+    res.write(`data: ${JSON.stringify({ error: err.message || String(err) })}\n\n`);
+    res.end();
+  }
 });
 
 app.listen(PORT, () => {
