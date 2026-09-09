@@ -265,7 +265,11 @@ export function generateSimulatedKeywordIdeas(seedKeywords: string[]): RawKeywor
   const baseTerms = [
     "tại nhà", "uy tín", "giá bao nhiêu", "trọn gói", "ở đâu tốt", 
     "kinh nghiệm", "hướng dẫn", "cho mẹ bầu", "sau sinh", "chuẩn y khoa",
-    "bảng giá 2026", "review", "chuyên nghiệp", "an toàn"
+    "bảng giá 2026", "review", "chuyên nghiệp", "an toàn", "chất lượng",
+    "chi phí", "gần đây", "địa chỉ", "trọn gói giá rẻ", "hiệu quả",
+    "chăm sóc toàn diện", "chuẩn bệnh viện", "tư vấn miễn phí",
+    "theo tuần", "theo tháng", "lưu ý quan trọng", "những điều cần biết",
+    "nguyên nhân và cách xử lý", "kinh nghiệm thực tế", "an tâm cho mẹ"
   ];
 
   for (const seed of seedKeywords) {
@@ -286,8 +290,8 @@ export function generateSimulatedKeywordIdeas(seedKeywords: string[]): RawKeywor
       });
     }
 
-    // Add 3-5 long-tail variations
-    for (let i = 0; i < 4; i++) {
+    // Add 10-12 long-tail variations
+    for (let i = 0; i < Math.min(12, baseTerms.length); i++) {
       const modifier = baseTerms[(cleanSeed.length + i * 3) % baseTerms.length];
       const longTail = `${cleanSeed} ${modifier}`;
       if (!added.has(longTail)) {

@@ -122,7 +122,7 @@ Trả về DUY NHẤT danh sách từ khóa, mỗi từ một dòng, không đá
 export function filterAndRankKeywords(
   rawKeywords: RawKeywordIdea[],
   contentGaps?: ContentGapItem[],
-  maxKeywords: number = 50
+  maxKeywords: number = 200
 ): CuratedKeyword[] {
   // Build set of missing subtopics for fast lookup
   const missingSubtopicsSet = new Set<string>();
@@ -263,7 +263,7 @@ export async function runKeywordResearch(request: KeywordResearchRequest): Promi
   }
 
   // Step 3: Filter & rank keywords
-  const maxKw = request.maxKeywords || 60;
+  const maxKw = request.maxKeywords || 200;
   const curated = filterAndRankKeywords(rawIdeas, request.contentGaps, maxKw);
 
   const highPriorityCount = curated.filter(k => k.priority === "Ưu tiên cao (Viết ngay)").length;

@@ -566,7 +566,7 @@ app.post("/api/keywords/research", async (req, res) => {
             googleAdsConfig,
             useSimulatedMetrics,
             llmConfig,
-            maxKeywords: maxKeywords ? Number(maxKeywords) : 60
+            maxKeywords: maxKeywords ? Number(maxKeywords) : 200
         });
         res.json(result);
     }

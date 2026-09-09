@@ -72,7 +72,7 @@ Trả về DUY NHẤT danh sách từ khóa, mỗi từ một dòng, không đá
 /**
  * Filter, classify and rank raw keyword ideas into actionable SEO table
  */
-function filterAndRankKeywords(rawKeywords, contentGaps, maxKeywords = 50) {
+function filterAndRankKeywords(rawKeywords, contentGaps, maxKeywords = 200) {
     // Build set of missing subtopics for fast lookup
     const missingSubtopicsSet = new Set();
     if (contentGaps && Array.isArray(contentGaps)) {
@@ -208,7 +208,7 @@ async function runKeywordResearch(request) {
         rawIdeas = (0, googleAdsService_1.generateSimulatedKeywordIdeas)(seeds);
     }
     // Step 3: Filter & rank keywords
-    const maxKw = request.maxKeywords || 60;
+    const maxKw = request.maxKeywords || 200;
     const curated = filterAndRankKeywords(rawIdeas, request.contentGaps, maxKw);
     const highPriorityCount = curated.filter(k => k.priority === "Ưu tiên cao (Viết ngay)").length;
     const totalSearchVolume = curated.reduce((acc, k) => acc + k.avgMonthlySearches, 0);
