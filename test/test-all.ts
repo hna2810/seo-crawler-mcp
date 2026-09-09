@@ -963,18 +963,31 @@ assert(dateExtCsv.includes("2024-03-05 14:20"), "External CSV row must contain m
   const kwHeaderValues = kwSheet.getRow(4).values as any[];
   assert(kwHeaderValues[2] === "Từ Khóa", "Column 2 must be 'Từ Khóa'");
 
-  // 17. TEST GOOGLE KEYWORD PLANNER EXACT PARSER & IMPORT
+  // 17. TEST GOOGLE KEYWORD PLANNER EXACT PARSER & DIRECT IMPORT
   console.log("\n--- 17. Testing Google Keyword Planner Exact Parser & Direct Import ---");
-  const { parseGoogleKeywordPlannerData } = require("../src/keywords/googleAdsService");
+  const { parseGoogleKeywordPlannerData, parsePlannerVolume } = require("../src/keywords/googleAdsService");
 
+  // A. Test Volume Parsing Formats
+  assert(parsePlannerVolume("-") === 0, "Volume '-' should parse to 0");
+  assert(parsePlannerVolume("0") === 0, "Volume '0' should parse to 0");
+  assert(parsePlannerVolume("320") === 320, "Volume '320' should parse to 320");
+  assert(parsePlannerVolume("2.510") === 2510, "Volume '2.510' should parse to 2510");
+  assert(parsePlannerVolume("10 - 100") === 55, "Volume range '10 - 100' should parse to 55");
+  assert(parsePlannerVolume("1K - 10K") === 5500, "Volume range '1K - 10K' should parse to 5500");
+
+  // B. Test Planner Pasted with 0-volume and '-' keywords
   const samplePlannerPasted = `Từ khóa	Số lần tìm kiếm tr.bình hàng tháng	Thay đổi trong ba tháng	Thay đổi so với cùng kỳ năm trước	Cạnh tranh	Tỷ lệ hiển thị quảng cáo	Giá thầu đầu trang (phạm vi mức giá thấp)	Giá thầu đầu trang (phạm vi mức giá cao)
 quá trình phát triển của thai nhi	590	-19%	-19%	Thấp	-	112 đ	273 đ
+chăm sóc cơ thể khi mang thai	-	-	-	-	-	-	-
 quá trình hình thành thai nhi	390	-18%	-33%	Thấp	-	106 đ	296 đ
+từ khóa không có tìm kiếm	0	0%	0%	-	-	-	-
 sự phát triển của thai nhi	320	-34%	-46%	Thấp	-	95 đ	240 đ
 sự phát triển của thai nhi qua từng tuần	90	-29%	-64%	Thấp	-	34 đ	380 đ`;
 
   const parsedPlannerIdeas = parseGoogleKeywordPlannerData(samplePlannerPasted);
-  assert(parsedPlannerIdeas.length === 4, "Must parse exactly 4 keywords from pasted planner text");
+  assert(parsedPlannerIdeas.length === 4, "Must parse exactly 4 keywords with volume > 0, filtering out '-' and '0'");
+  assert(!parsedPlannerIdeas.some((k: any) => k.text === "chăm sóc cơ thể khi mang thai"), "Must strictly exclude keyword with '-' search volume ('chăm sóc cơ thể khi mang thai')");
+  assert(!parsedPlannerIdeas.some((k: any) => k.text === "từ khóa không có tìm kiếm"), "Must strictly exclude keyword with '0' search volume");
 
   const thaiNhiRaw = parsedPlannerIdeas.find((k: any) => k.text === "sự phát triển của thai nhi");
   assert(Boolean(thaiNhiRaw), "Keyword 'sự phát triển của thai nhi' must exist");
@@ -988,6 +1001,7 @@ sự phát triển của thai nhi qua từng tuần	90	-29%	-64%	Thấp	-	34 đ	
     { topic: "MẸ BẦU / THAI KỲ", subtopicsWithZeroArticles: ["Sự phát triển của thai nhi"] }
   ];
   const rankedPlanner = filterAndRankKeywords(parsedPlannerIdeas, mockThaiNhiGaps, 10);
+  assert(rankedPlanner.every((k: any) => k.avgMonthlySearches > 0), "All ranked keywords must have search volume > 0");
   const thaiNhiRanked = rankedPlanner.find((k: any) => k.keyword === "sự phát triển của thai nhi");
   assert(thaiNhiRanked?.avgMonthlySearches === 320, "Ranked keyword volume must preserve exact 320");
   assert(thaiNhiRanked?.competition === "Thấp", "Ranked keyword competition must be 'Thấp'");

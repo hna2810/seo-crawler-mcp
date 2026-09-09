@@ -3,11 +3,63 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.loadGoogleAdsYamlConfig = loadGoogleAdsYamlConfig;
 exports.getGoogleAdsAccessToken = getGoogleAdsAccessToken;
 exports.testGoogleAdsConnection = testGoogleAdsConnection;
 exports.fetchGoogleKeywordIdeas = fetchGoogleKeywordIdeas;
 exports.generateSimulatedKeywordIdeas = generateSimulatedKeywordIdeas;
+exports.parsePlannerVolume = parsePlannerVolume;
+exports.parseGoogleKeywordPlannerData = parseGoogleKeywordPlannerData;
 const axios_1 = __importDefault(require("axios"));
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const os_1 = __importDefault(require("os"));
+/**
+ * Automatically find and load configuration from google-ads.yaml file if present
+ */
+function loadGoogleAdsYamlConfig() {
+    const candidatePaths = [
+        path_1.default.resolve(process.cwd(), "google-ads.yaml"),
+        path_1.default.resolve(process.cwd(), "..", "google-ads.yaml"),
+        path_1.default.join(os_1.default.homedir(), "google-ads.yaml"),
+        "c:\\Users\\Administrator\\Desktop\\ads\\google-ads.yaml"
+    ];
+    for (const p of candidatePaths) {
+        try {
+            if (fs_1.default.existsSync(p)) {
+                const raw = fs_1.default.readFileSync(p, "utf-8");
+                const parsed = {};
+                for (const line of raw.split(/\r?\n/)) {
+                    const trimmed = line.trim();
+                    if (!trimmed || trimmed.startsWith("#"))
+                        continue;
+                    const idx = trimmed.indexOf(":");
+                    if (idx > 0) {
+                        const k = trimmed.slice(0, idx).trim();
+                        let v = trimmed.slice(idx + 1).trim();
+                        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+                            v = v.slice(1, -1);
+                        }
+                        parsed[k] = v;
+                    }
+                }
+                const config = {
+                    developerToken: parsed.developer_token || "",
+                    clientId: parsed.client_id || "",
+                    clientSecret: parsed.client_secret || "",
+                    refreshToken: parsed.refresh_token || "",
+                    customerId: parsed.customer_id || parsed.login_customer_id || "",
+                    loginCustomerId: parsed.login_customer_id || ""
+                };
+                return { found: true, filePath: p, config };
+            }
+        }
+        catch {
+            // ignore read error
+        }
+    }
+    return { found: false };
+}
 /**
  * Exchange OAuth2 refresh token for a short-lived access token
  */
@@ -29,8 +81,12 @@ async function getGoogleAdsAccessToken(config) {
         throw new Error("Không nhận được access_token từ Google OAuth2");
     }
     catch (err) {
-        const errMsg = err.response?.data?.error_description || err.response?.data?.error || err.message;
-        throw new Error(`Lỗi xác thực OAuth2 Google Ads: ${errMsg}`);
+        const errCode = err.response?.data?.error || "";
+        const errDesc = err.response?.data?.error_description || err.message;
+        if (errCode === "invalid_grant" || (typeof errDesc === "string" && errDesc.includes("invalid_grant"))) {
+            throw new Error("Mã Refresh Token trong file đã hết hạn (Google OAuth hết hạn sau 7-30 ngày). Bạn chỉ cần dùng Client ID & Client Secret có sẵn để lấy lại Refresh Token mới tại OAuth Playground theo Bước 4!");
+        }
+        throw new Error(`Lỗi xác thực OAuth2 Google Ads: ${errDesc || errCode}`);
     }
 }
 /**
@@ -58,9 +114,43 @@ async function testGoogleAdsConnection(config) {
     try {
         const accessToken = await getGoogleAdsAccessToken(config);
         if (accessToken) {
+            // Test real generateKeywordIdeas if developerToken & customerId provided
+            if (config.developerToken && config.customerId) {
+                try {
+                    const cleanCustomerId = config.customerId.replace(/[^0-9]/g, "");
+                    const endpoint = `https://googleads.googleapis.com/v22/customers/${cleanCustomerId}:generateKeywordIdeas`;
+                    const headers = {
+                        "Authorization": `Bearer ${accessToken}`,
+                        "developer-token": config.developerToken.trim(),
+                        "Content-Type": "application/json"
+                    };
+                    if (config.loginCustomerId) {
+                        headers["login-customer-id"] = config.loginCustomerId.replace(/[^0-9]/g, "");
+                    }
+                    const payload = {
+                        customerId: cleanCustomerId,
+                        keywordSeed: { keywords: ["chăm sóc bé"] },
+                        geoTargetConstants: ["geoTargetConstants/2704"],
+                        keywordPlanNetwork: "GOOGLE_SEARCH",
+                        language: "languageConstants/1040"
+                    };
+                    await axios_1.default.post(endpoint, payload, { headers, timeout: 15000 });
+                    return {
+                        success: true,
+                        message: "Kết nối thành công! Đã xác thực OAuth2 và kết nối Google Ads API v22 lấy dữ liệu chính xác từ Google Keyword Planner."
+                    };
+                }
+                catch (apiErr) {
+                    const errMsg = apiErr.response?.data?.error?.message || apiErr.response?.data?.[0]?.error?.message || apiErr.message;
+                    return {
+                        success: false,
+                        message: `OAuth2 hợp lệ nhưng truy vấn Google Ads API v22 thất bại: ${errMsg}`
+                    };
+                }
+            }
             return {
                 success: true,
-                message: "Kết nối thành công! Đã xác thực OAuth2 và sẵn sàng truy vấn Google Keyword Planner."
+                message: "Kết nối OAuth2 thành công!"
             };
         }
         return { success: false, message: "Không thể lấy Access Token từ Google" };
@@ -85,7 +175,8 @@ async function fetchGoogleKeywordIdeas(config, seedKeywords) {
     const language = config.language || "languageConstants/1040"; // Vietnamese
     // Google Ads API limits keywordSeed to max 20 keywords per request
     const limitedSeeds = seedKeywords.slice(0, 20);
-    const endpoint = `https://googleads.googleapis.com/v17/customers/${cleanCustomerId}:generateKeywordIdeas`;
+    // Phiên bản Google Ads API v22 (Active supported version năm 2026)
+    const endpoint = `https://googleads.googleapis.com/v22/customers/${cleanCustomerId}:generateKeywordIdeas`;
     const headers = {
         "Authorization": `Bearer ${accessToken}`,
         "developer-token": config.developerToken.trim(),
@@ -95,6 +186,7 @@ async function fetchGoogleKeywordIdeas(config, seedKeywords) {
         headers["login-customer-id"] = config.loginCustomerId.replace(/[^0-9]/g, "");
     }
     const payload = {
+        customerId: cleanCustomerId,
         keywordSeed: {
             keywords: limitedSeeds
         },
@@ -105,12 +197,24 @@ async function fetchGoogleKeywordIdeas(config, seedKeywords) {
     try {
         const res = await axios_1.default.post(endpoint, payload, { headers, timeout: 30000 });
         const results = res.data.results || [];
-        const parsed = results.map((item) => {
+        // Lọc bỏ triệt để các từ khóa không có lượt tìm kiếm (0, rỗng hoặc âm)
+        const validResults = results.filter((item) => {
+            const vol = Number(item.keywordIdeaMetrics?.avgMonthlySearches || 0);
+            return vol > 0;
+        });
+        const parsed = validResults.map((item) => {
             const metrics = item.keywordIdeaMetrics || {};
+            let comp = "UNSPECIFIED";
+            if (metrics.competition === "LOW")
+                comp = "LOW";
+            else if (metrics.competition === "MEDIUM")
+                comp = "MEDIUM";
+            else if (metrics.competition === "HIGH")
+                comp = "HIGH";
             return {
                 text: item.text,
                 avgMonthlySearches: Number(metrics.avgMonthlySearches || 0),
-                competition: metrics.competition || "UNSPECIFIED",
+                competition: comp,
                 competitionIndex: Number(metrics.competitionIndex || 0),
                 lowBidMicros: metrics.lowTopOfPageBidMicros ? Number(metrics.lowTopOfPageBidMicros) : undefined,
                 highBidMicros: metrics.highTopOfPageBidMicros ? Number(metrics.highTopOfPageBidMicros) : undefined
@@ -119,8 +223,8 @@ async function fetchGoogleKeywordIdeas(config, seedKeywords) {
         return parsed;
     }
     catch (err) {
-        const apiError = err.response?.data?.error?.message || err.message;
-        throw new Error(`Google Ads API generateKeywordIdeas thất bại: ${apiError}`);
+        const apiError = err.response?.data?.error?.message || err.response?.data?.[0]?.error?.message || err.message;
+        throw new Error(`Google Ads API v22 generateKeywordIdeas thất bại: ${apiError}`);
     }
 }
 /**
@@ -179,4 +283,135 @@ function getDeterministicHash(str) {
         hash |= 0;
     }
     return Math.abs(hash);
+}
+function cleanNumber(val) {
+    if (!val)
+        return 0;
+    const cleaned = val.toString().replace(/[đ\s\.%]/g, "").replace(",", ".");
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+}
+function parsePlannerVolume(volStr) {
+    if (!volStr)
+        return 0;
+    const str = volStr.toString().trim().toLowerCase();
+    if (!str || str === "-" || str === "–" || str === "—" || str === "0")
+        return 0;
+    // Xử lý dải lượt tìm kiếm như 10 - 100, 1k - 10k...
+    if (str.includes("-") || str.includes("–")) {
+        const parts = str.split(/[-–]/).map((p) => p.trim());
+        if (parts.length >= 2) {
+            const p1 = parsePlannerVolume(parts[0]);
+            const p2 = parsePlannerVolume(parts[1]);
+            if (p2 > 0)
+                return Math.round((p1 + p2) / 2);
+            if (p1 > 0)
+                return p1;
+        }
+    }
+    if (str.includes("k")) {
+        return cleanNumber(str.replace(/k/g, "")) * 1000;
+    }
+    if (str.includes("tr") || str.includes("m")) {
+        return cleanNumber(str.replace(/tr|m/g, "")) * 1000000;
+    }
+    return cleanNumber(str);
+}
+/**
+ * Parse raw copied text, TSV, or CSV exported from Google Keyword Planner
+ */
+function parseGoogleKeywordPlannerData(rawText) {
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const result = [];
+    if (lines.length === 0)
+        return result;
+    let sep = "\t";
+    const firstLine = lines[0] || "";
+    if (firstLine.includes("\t")) {
+        sep = "\t";
+    }
+    else if (firstLine.includes(",")) {
+        sep = ",";
+    }
+    else if (firstLine.includes(";")) {
+        sep = ";";
+    }
+    let headerIdx = -1;
+    let kwCol = 0;
+    let volCol = 1;
+    let compCol = 4;
+    let lowBidCol = 6;
+    let highBidCol = 7;
+    // Detect headers
+    for (let i = 0; i < Math.min(lines.length, 10); i++) {
+        const cols = lines[i].split(sep).map(c => c.trim().toLowerCase());
+        const kIdx = cols.findIndex(c => c.includes("từ khóa") || c.includes("keyword"));
+        if (kIdx !== -1) {
+            headerIdx = i;
+            kwCol = kIdx;
+            const vIdx = cols.findIndex(c => c.includes("tìm kiếm") || c.includes("searches") || c.includes("volume"));
+            if (vIdx !== -1)
+                volCol = vIdx;
+            const cIdx = cols.findIndex(c => c.includes("cạnh tranh") || c.includes("competition"));
+            if (cIdx !== -1)
+                compCol = cIdx;
+            const lIdx = cols.findIndex(c => c.includes("mức giá thấp") || c.includes("low range"));
+            if (lIdx !== -1)
+                lowBidCol = lIdx;
+            const hIdx = cols.findIndex(c => c.includes("mức giá cao") || c.includes("high range"));
+            if (hIdx !== -1)
+                highBidCol = hIdx;
+            break;
+        }
+    }
+    const startLine = headerIdx >= 0 ? headerIdx + 1 : 0;
+    const seen = new Set();
+    for (let i = startLine; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.startsWith("#") || line.toLowerCase().includes("bản quyền") || line.toLowerCase().includes("tổng cộng"))
+            continue;
+        const cols = line.split(sep).map(c => c.trim().replace(/^["']|["']$/g, ""));
+        if (cols.length <= kwCol)
+            continue;
+        const text = cols[kwCol];
+        if (!text || text === "-" || text.toLowerCase() === "từ khóa bạn cung cấp" || text.toLowerCase() === "ý tưởng từ khóa")
+            continue;
+        if (seen.has(text.toLowerCase()))
+            continue;
+        seen.add(text.toLowerCase());
+        // Parse volume
+        const volStr = cols[volCol] || "0";
+        const avgMonthlySearches = parsePlannerVolume(volStr);
+        // Lọc bỏ triệt để các từ khóa không có lượt tìm kiếm (0 hoặc rỗng) theo yêu cầu người dùng
+        if (avgMonthlySearches <= 0)
+            continue;
+        // Parse competition
+        const compRaw = (cols[compCol] || "").toLowerCase();
+        let competition = "UNSPECIFIED";
+        let compIndex = 50;
+        if (compRaw.includes("thấp") || compRaw.includes("low")) {
+            competition = "LOW";
+            compIndex = 20;
+        }
+        else if (compRaw.includes("cao") || compRaw.includes("high")) {
+            competition = "HIGH";
+            compIndex = 80;
+        }
+        else if (compRaw.includes("trung bình") || compRaw.includes("medium")) {
+            competition = "MEDIUM";
+            compIndex = 50;
+        }
+        // Parse bids
+        const lowBid = cleanNumber(cols[lowBidCol] || "0");
+        const highBid = cleanNumber(cols[highBidCol] || "0");
+        result.push({
+            text,
+            avgMonthlySearches,
+            competition,
+            competitionIndex: compIndex,
+            lowBidMicros: lowBid > 0 ? lowBid * 1000000 : undefined,
+            highBidMicros: highBid > 0 ? highBid * 1000000 : undefined
+        });
+    }
+    return result;
 }

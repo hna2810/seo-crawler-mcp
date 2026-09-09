@@ -143,6 +143,9 @@ export function filterAndRankKeywords(
     if (!kwText || seenKeywords.has(kwText)) continue;
     seenKeywords.add(kwText);
 
+    // Lọc bỏ triệt để các từ khóa không có lượt tìm kiếm (0 hoặc rỗng) theo yêu cầu người dùng
+    if (!raw.avgMonthlySearches || raw.avgMonthlySearches <= 0) continue;
+
     // Classify topic and context using taxonomy
     const classif = classifyContent({ title: kwText, url: "" });
     const subtopicLower = classif.subtopic.trim().toLowerCase();
@@ -253,8 +256,7 @@ export async function runKeywordResearch(request: KeywordResearchRequest): Promi
     try {
       rawIdeas = await fetchGoogleKeywordIdeas(request.googleAdsConfig!, seeds);
     } catch (err: any) {
-      // If API call fails, fallback with clear notice
-      rawIdeas = generateSimulatedKeywordIdeas(seeds);
+      throw new Error(`Google Ads Keyword Planner API lỗi: ${err.message}. Vui lòng kiểm tra lại cấu hình hoặc token.`);
     }
   } else {
     rawIdeas = generateSimulatedKeywordIdeas(seeds);

@@ -131,9 +131,42 @@ export async function testGoogleAdsConnection(config: GoogleAdsConfig): Promise<
   try {
     const accessToken = await getGoogleAdsAccessToken(config);
     if (accessToken) {
+      // Test real generateKeywordIdeas if developerToken & customerId provided
+      if (config.developerToken && config.customerId) {
+        try {
+          const cleanCustomerId = config.customerId.replace(/[^0-9]/g, "");
+          const endpoint = `https://googleads.googleapis.com/v22/customers/${cleanCustomerId}:generateKeywordIdeas`;
+          const headers: Record<string, string> = {
+            "Authorization": `Bearer ${accessToken}`,
+            "developer-token": config.developerToken.trim(),
+            "Content-Type": "application/json"
+          };
+          if (config.loginCustomerId) {
+            headers["login-customer-id"] = config.loginCustomerId.replace(/[^0-9]/g, "");
+          }
+          const payload = {
+            customerId: cleanCustomerId,
+            keywordSeed: { keywords: ["chăm sóc bé"] },
+            geoTargetConstants: ["geoTargetConstants/2704"],
+            keywordPlanNetwork: "GOOGLE_SEARCH",
+            language: "languageConstants/1040"
+          };
+          await axios.post(endpoint, payload, { headers, timeout: 15000 });
+          return {
+            success: true,
+            message: "Kết nối thành công! Đã xác thực OAuth2 và kết nối Google Ads API v22 lấy dữ liệu chính xác từ Google Keyword Planner."
+          };
+        } catch (apiErr: any) {
+          const errMsg = apiErr.response?.data?.error?.message || apiErr.response?.data?.[0]?.error?.message || apiErr.message;
+          return {
+            success: false,
+            message: `OAuth2 hợp lệ nhưng truy vấn Google Ads API v22 thất bại: ${errMsg}`
+          };
+        }
+      }
       return {
         success: true,
-        message: "Kết nối thành công! Đã xác thực OAuth2 và sẵn sàng truy vấn Google Keyword Planner."
+        message: "Kết nối OAuth2 thành công!"
       };
     }
     return { success: false, message: "Không thể lấy Access Token từ Google" };
@@ -164,7 +197,8 @@ export async function fetchGoogleKeywordIdeas(
   // Google Ads API limits keywordSeed to max 20 keywords per request
   const limitedSeeds = seedKeywords.slice(0, 20);
 
-  const endpoint = `https://googleads.googleapis.com/v17/customers/${cleanCustomerId}:generateKeywordIdeas`;
+  // Phiên bản Google Ads API v22 (Active supported version năm 2026)
+  const endpoint = `https://googleads.googleapis.com/v22/customers/${cleanCustomerId}:generateKeywordIdeas`;
 
   const headers: Record<string, string> = {
     "Authorization": `Bearer ${accessToken}`,
@@ -177,6 +211,7 @@ export async function fetchGoogleKeywordIdeas(
   }
 
   const payload = {
+    customerId: cleanCustomerId,
     keywordSeed: {
       keywords: limitedSeeds
     },
@@ -189,12 +224,23 @@ export async function fetchGoogleKeywordIdeas(
     const res = await axios.post(endpoint, payload, { headers, timeout: 30000 });
     const results = res.data.results || [];
 
-    const parsed: RawKeywordIdea[] = results.map((item: any) => {
+    // Lọc bỏ triệt để các từ khóa không có lượt tìm kiếm (0, rỗng hoặc âm)
+    const validResults = results.filter((item: any) => {
+      const vol = Number(item.keywordIdeaMetrics?.avgMonthlySearches || 0);
+      return vol > 0;
+    });
+
+    const parsed: RawKeywordIdea[] = validResults.map((item: any) => {
       const metrics = item.keywordIdeaMetrics || {};
+      let comp: "LOW" | "MEDIUM" | "HIGH" | "UNSPECIFIED" = "UNSPECIFIED";
+      if (metrics.competition === "LOW") comp = "LOW";
+      else if (metrics.competition === "MEDIUM") comp = "MEDIUM";
+      else if (metrics.competition === "HIGH") comp = "HIGH";
+
       return {
         text: item.text,
         avgMonthlySearches: Number(metrics.avgMonthlySearches || 0),
-        competition: metrics.competition || "UNSPECIFIED",
+        competition: comp,
         competitionIndex: Number(metrics.competitionIndex || 0),
         lowBidMicros: metrics.lowTopOfPageBidMicros ? Number(metrics.lowTopOfPageBidMicros) : undefined,
         highBidMicros: metrics.highTopOfPageBidMicros ? Number(metrics.highTopOfPageBidMicros) : undefined
@@ -203,8 +249,8 @@ export async function fetchGoogleKeywordIdeas(
 
     return parsed;
   } catch (err: any) {
-    const apiError = err.response?.data?.error?.message || err.message;
-    throw new Error(`Google Ads API generateKeywordIdeas thất bại: ${apiError}`);
+    const apiError = err.response?.data?.error?.message || err.response?.data?.[0]?.error?.message || err.message;
+    throw new Error(`Google Ads API v22 generateKeywordIdeas thất bại: ${apiError}`);
   }
 }
 
@@ -278,6 +324,32 @@ function cleanNumber(val: any): number {
   return isNaN(num) ? 0 : num;
 }
 
+export function parsePlannerVolume(volStr: any): number {
+  if (!volStr) return 0;
+  const str = volStr.toString().trim().toLowerCase();
+  if (!str || str === "-" || str === "–" || str === "—" || str === "0") return 0;
+
+  // Xử lý dải lượt tìm kiếm như 10 - 100, 1k - 10k...
+  if (str.includes("-") || str.includes("–")) {
+    const parts = str.split(/[-–]/).map((p: string) => p.trim());
+    if (parts.length >= 2) {
+      const p1 = parsePlannerVolume(parts[0]);
+      const p2 = parsePlannerVolume(parts[1]);
+      if (p2 > 0) return Math.round((p1 + p2) / 2);
+      if (p1 > 0) return p1;
+    }
+  }
+
+  if (str.includes("k")) {
+    return cleanNumber(str.replace(/k/g, "")) * 1000;
+  }
+  if (str.includes("tr") || str.includes("m")) {
+    return cleanNumber(str.replace(/tr|m/g, "")) * 1000000;
+  }
+
+  return cleanNumber(str);
+}
+
 /**
  * Parse raw copied text, TSV, or CSV exported from Google Keyword Planner
  */
@@ -337,11 +409,11 @@ export function parseGoogleKeywordPlannerData(rawText: string): RawKeywordIdea[]
     seen.add(text.toLowerCase());
 
     // Parse volume
-    let volStr = cols[volCol] || "0";
-    let avgMonthlySearches = cleanNumber(volStr);
-    if (volStr.toLowerCase().includes("k")) {
-      avgMonthlySearches = cleanNumber(volStr.replace(/k/gi, "")) * 1000;
-    }
+    const volStr = cols[volCol] || "0";
+    const avgMonthlySearches = parsePlannerVolume(volStr);
+
+    // Lọc bỏ triệt để các từ khóa không có lượt tìm kiếm (0 hoặc rỗng) theo yêu cầu người dùng
+    if (avgMonthlySearches <= 0) continue;
 
     // Parse competition
     const compRaw = (cols[compCol] || "").toLowerCase();

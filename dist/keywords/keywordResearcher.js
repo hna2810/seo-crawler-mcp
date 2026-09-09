@@ -90,6 +90,9 @@ function filterAndRankKeywords(rawKeywords, contentGaps, maxKeywords = 50) {
         if (!kwText || seenKeywords.has(kwText))
             continue;
         seenKeywords.add(kwText);
+        // Lọc bỏ triệt để các từ khóa không có lượt tìm kiếm (0 hoặc rỗng) theo yêu cầu người dùng
+        if (!raw.avgMonthlySearches || raw.avgMonthlySearches <= 0)
+            continue;
         // Classify topic and context using taxonomy
         const classif = (0, topicClassifier_1.classifyContent)({ title: kwText, url: "" });
         const subtopicLower = classif.subtopic.trim().toLowerCase();
@@ -198,8 +201,7 @@ async function runKeywordResearch(request) {
             rawIdeas = await (0, googleAdsService_1.fetchGoogleKeywordIdeas)(request.googleAdsConfig, seeds);
         }
         catch (err) {
-            // If API call fails, fallback with clear notice
-            rawIdeas = (0, googleAdsService_1.generateSimulatedKeywordIdeas)(seeds);
+            throw new Error(`Google Ads Keyword Planner API lỗi: ${err.message}. Vui lòng kiểm tra lại cấu hình hoặc token.`);
         }
     }
     else {
