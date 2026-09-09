@@ -24,8 +24,8 @@ import {
 } from "./utils/report";
 import { POPULAR_MODELS, testLLMConnection, streamLLMAnalysis, LLMConfig } from "./ai/llmService";
 import { buildSEOExpertPrompt } from "./ai/promptBuilder";
-import { testGoogleAdsConnection, loadGoogleAdsYamlConfig, GoogleAdsConfig } from "./keywords/googleAdsService";
-import { runKeywordResearch, CuratedKeyword } from "./keywords/keywordResearcher";
+import { testGoogleAdsConnection, loadGoogleAdsYamlConfig, parseGoogleKeywordPlannerData, GoogleAdsConfig } from "./keywords/googleAdsService";
+import { runKeywordResearch, filterAndRankKeywords, CuratedKeyword } from "./keywords/keywordResearcher";
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -560,6 +560,46 @@ app.post("/api/keywords/test-config", async (req, res) => {
     const config: GoogleAdsConfig = req.body;
     const result = await testGoogleAdsConnection(config);
     res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || String(err) });
+  }
+});
+
+// Import keywords directly from Google Keyword Planner CSV / TSV / Pasted table
+app.post("/api/keywords/import-planner", async (req, res) => {
+  try {
+    const { rawData, sessionId, enableGaps, maxKeywords } = req.body;
+    if (!rawData || !rawData.trim()) {
+      return res.status(400).json({ success: false, message: "Dữ liệu trống. Vui lòng dán hoặc tải file dữ liệu từ Google Keyword Planner" });
+    }
+
+    const rawIdeas = parseGoogleKeywordPlannerData(rawData);
+    if (rawIdeas.length === 0) {
+      return res.status(400).json({ success: false, message: "Không nhận diện được từ khóa nào từ dữ liệu cung cấp. Hãy chắc chắn bạn đã sao chép bảng hoặc tải file CSV từ Google Keyword Planner." });
+    }
+
+    const data = sessionId ? getSessionAnalysis(sessionId as string) : null;
+    const contentGaps = (enableGaps !== false && data?.contentRatio?.contentGaps) ? data.contentRatio.contentGaps : [];
+
+    const curated = filterAndRankKeywords(rawIdeas, contentGaps, maxKeywords || 300);
+
+    const highPriorityCount = curated.filter(k => k.priority === "Ưu tiên cao (Viết ngay)").length;
+    const totalSearchVolume = curated.reduce((acc, k) => acc + k.avgMonthlySearches, 0);
+    const gapKeywordsCount = curated.filter(k => k.isContentGap).length;
+    const summary = `Đã nhập trực tiếp ${rawIdeas.length} từ khóa từ Google Keyword Planner: chọn lọc và xếp hạng ${curated.length} từ khóa với tổng ${totalSearchVolume.toLocaleString("vi-VN")} lượt tìm kiếm/tháng. Trong đó có ${gapKeywordsCount} từ khóa giúp lấp đầy Content Gap của website và ${highPriorityCount} từ khóa nên viết bài ngay.`;
+
+    res.json({
+      success: true,
+      data: {
+        seedsUsed: [`Nhập từ Google Keyword Planner (${rawIdeas.length} từ khóa gốc)`],
+        totalFound: curated.length,
+        totalSearchVolume,
+        highPriorityCount,
+        gapKeywordsCount,
+        summary,
+        keywords: curated
+      }
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message || String(err) });
   }

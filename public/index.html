@@ -1089,11 +1089,34 @@
 
           <div class="space-y-3 text-xs">
             <div>
-              <label class="block font-semibold text-slate-700 mb-1">Chế Độ Thu Thập Chỉ Số:</label>
-              <select id="gads-mode" onchange="toggleGoogleAdsMode()" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium outline-none bg-slate-50 focus:bg-white">
-                <option value="simulated">Chế độ Dự toán Thông minh (AI + Google Search Suggest) [Khuyên Dùng Ban Đầu]</option>
-                <option value="official">Google Ads API Chính Thức (Keyword Planner REST API)</option>
+              <label class="block font-semibold text-slate-700 mb-1">Nguồn Dữ Liệu Từ Khóa & Số Liệu:</label>
+              <select id="gads-mode" onchange="toggleGoogleAdsMode()" class="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium outline-none bg-slate-50 focus:bg-white text-xs">
+                <option value="import" selected>📥 Nhập Trực Tiếp Từ Google Keyword Planner (Dán Bảng hoặc File CSV 508 Từ Khóa) [Khuyên Dùng - Số Liệu Chuẩn 100%]</option>
+                <option value="official">Google Ads API Chính Thức (Tự Động Kết Nối REST API)</option>
+                <option value="simulated">Chế độ Dự toán Thông minh (Ước Lượng AI & Search Suggest)</option>
               </select>
+            </div>
+
+            <!-- Khung Nhập Trực Tiếp Từ Google Keyword Planner -->
+            <div id="gads-import-container" class="space-y-2.5 pt-1 border-t border-dashed border-slate-200">
+              <div class="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 space-y-2.5 shadow-xs">
+                <div class="font-bold flex items-center justify-between text-emerald-900">
+                  <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-600"></i> Lấy 100% Số Liệu Chuẩn Từ Google Keyword Planner</span>
+                  <label class="text-[10px] text-blue-700 bg-white px-2.5 py-1 rounded-lg cursor-pointer hover:bg-blue-50 border border-blue-200 shadow-2xs font-semibold inline-flex items-center gap-1">
+                    <i class="fa-solid fa-cloud-arrow-up text-blue-600"></i> Tải file CSV / XLSX tải từ Google Ads
+                    <input type="file" id="planner-file-input" accept=".csv,.tsv,.txt,.xlsx,.xls" onchange="handlePlannerFileUpload(event)" class="hidden">
+                  </label>
+                </div>
+                <p class="text-[11px] text-slate-600 leading-relaxed">
+                  Trong giao diện Google Keyword Planner của bạn (như hình bạn mở có <strong>508 ý tưởng từ khóa</strong>):
+                  <br>• <strong>Cách nhanh nhất:</strong> Quét bôi đen các dòng trong bảng Google Ads &rarr; Nhấn <strong>Ctrl+C</strong> &rarr; <strong>Dán vào ô bên dưới</strong> (nhận cả dấu tab, phân cách cột).
+                  <br>• <strong>Hoặc:</strong> Bấm biểu tượng <em>"Tải ý tưởng từ khóa xuống"</em> (.csv) trên Google Ads rồi tải file lên.
+                </p>
+                <textarea id="planner-pasted-data" rows="4" placeholder="Dán bảng bạn vừa copy từ Google Keyword Planner vào đây...&#10;Ví dụ:&#10;quá trình phát triển của thai nhi	590	-19%	-19%	Thấp	-	112 đ	273 đ&#10;sự phát triển của thai nhi	320	-34%	-46%	Thấp	-	95 đ	240 đ" class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-[11px] font-mono outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"></textarea>
+                <button type="button" onclick="handleImportFromPlanner()" id="btn-import-planner" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs transition-all shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer transform active:scale-98">
+                  <i class="fa-solid fa-file-import text-sm"></i> NẠP CHÍNH XÁC SỐ LIỆU GOOGLE KEYWORD PLANNER & PHÂN TÍCH CONTENT GAP
+                </button>
+              </div>
             </div>
 
             <!-- Google Ads API Official Inputs Container -->
@@ -1155,9 +1178,9 @@
               </div>
             </div>
 
-            <div class="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 leading-relaxed">
+            <div id="gads-simulated-tip" class="hidden p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 leading-relaxed">
               <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i>
-              <strong>Mẹo:</strong> Nếu bạn chưa có sẵn Developer Token Google Ads đã duyệt (thường mất thời gian đăng ký), hãy để <strong>"Chế độ Dự toán Thông minh"</strong> để hệ thống tự động sinh dữ liệu Search Volume & giá thầu sát thực tế ngay lập tức!
+              <strong>Lưu ý:</strong> Chế độ Dự toán Thông minh sử dụng AI & Google Suggest để ước tính chỉ số tham khảo. Để có số liệu chính xác 100% như trong Google Keyword Planner, hãy chọn chế độ <strong>"Nhập Trực Tiếp Từ Google Keyword Planner"</strong> hoặc <strong>"Google Ads API Chính Thức"</strong>!
               <div class="mt-2.5 pt-2 border-t border-amber-200/70 flex items-center justify-between">
                 <span class="font-semibold text-amber-950">Chưa biết cách lấy các mã trên?</span>
                 <a href="#gads-api-guide" class="text-blue-600 hover:text-blue-800 font-bold hover:underline inline-flex items-center gap-1">
@@ -2522,17 +2545,92 @@
 
     function toggleGoogleAdsMode() {
       const mode = document.getElementById("gads-mode").value;
-      const fields = document.getElementById("gads-official-fields");
+      const off = document.getElementById("gads-official-fields");
+      const imp = document.getElementById("gads-import-container");
       const badge = document.getElementById("gads-status-badge");
-      if (mode === "official") {
-        fields.classList.remove("hidden");
-        badge.innerText = "Google Ads API";
-        badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700";
+      const tip = document.getElementById("gads-simulated-tip");
+
+      if (mode === "import") {
+        if (imp) imp.classList.remove("hidden");
+        if (off) off.classList.add("hidden");
+        if (tip) tip.classList.add("hidden");
+        if (badge) {
+          badge.innerText = "Dữ liệu Chuẩn 100%";
+          badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800";
+        }
+      } else if (mode === "official") {
+        if (imp) imp.classList.add("hidden");
+        if (off) off.classList.remove("hidden");
+        if (tip) tip.classList.add("hidden");
+        if (badge) {
+          badge.innerText = "Google Ads API";
+          badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700";
+        }
       } else {
-        fields.classList.add("hidden");
-        badge.innerText = "Chế độ Dự toán";
-        badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800";
+        if (imp) imp.classList.add("hidden");
+        if (off) off.classList.add("hidden");
+        if (tip) tip.classList.remove("hidden");
+        if (badge) {
+          badge.innerText = "Chế độ Dự toán";
+          badge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800";
+        }
       }
+    }
+
+    async function handleImportFromPlanner() {
+      const text = document.getElementById("planner-pasted-data").value.trim();
+      if (!text) {
+        alert("Vui lòng dán dữ liệu hoặc chọn file tải từ Google Keyword Planner.");
+        return;
+      }
+
+      const btn = document.getElementById("btn-import-planner");
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang phân tích số liệu chuẩn Google & đối chiếu Content Gap...`;
+
+      try {
+        const sessionId = currentSessionData?.sessionId || null;
+        const enableGaps = document.getElementById("kw-enable-gaps") ? document.getElementById("kw-enable-gaps").checked : true;
+
+        const res = await fetch("/api/keywords/import-planner", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rawData: text,
+            sessionId,
+            enableGaps,
+            maxKeywords: 500
+          })
+        });
+
+        const json = await res.json();
+        if (json.success && json.data) {
+          renderKeywordResults(json.data);
+          const statEl = document.getElementById("kw-stat-total");
+          if (statEl) statEl.scrollIntoView({ behavior: "smooth" });
+        } else {
+          alert("Lỗi khi nạp dữ liệu: " + (json.message || "Không xác định"));
+        }
+      } catch (err) {
+        alert("Lỗi kết nối máy chủ: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+    }
+
+    function handlePlannerFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const content = evt.target.result;
+        document.getElementById("planner-pasted-data").value = content;
+        handleImportFromPlanner();
+      };
+      reader.readAsText(file, "UTF-8");
     }
 
     function loadGoogleAdsConfig() {

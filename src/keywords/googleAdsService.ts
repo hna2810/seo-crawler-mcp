@@ -270,3 +270,107 @@ function getDeterministicHash(str: string): number {
   }
   return Math.abs(hash);
 }
+
+function cleanNumber(val: any): number {
+  if (!val) return 0;
+  const cleaned = val.toString().replace(/[đ\s\.%]/g, "").replace(",", ".");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Parse raw copied text, TSV, or CSV exported from Google Keyword Planner
+ */
+export function parseGoogleKeywordPlannerData(rawText: string): RawKeywordIdea[] {
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const result: RawKeywordIdea[] = [];
+  if (lines.length === 0) return result;
+
+  let sep = "\t";
+  const firstLine = lines[0] || "";
+  if (firstLine.includes("\t")) {
+    sep = "\t";
+  } else if (firstLine.includes(",")) {
+    sep = ",";
+  } else if (firstLine.includes(";")) {
+    sep = ";";
+  }
+
+  let headerIdx = -1;
+  let kwCol = 0;
+  let volCol = 1;
+  let compCol = 4;
+  let lowBidCol = 6;
+  let highBidCol = 7;
+
+  // Detect headers
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    const cols = lines[i].split(sep).map(c => c.trim().toLowerCase());
+    const kIdx = cols.findIndex(c => c.includes("từ khóa") || c.includes("keyword"));
+    if (kIdx !== -1) {
+      headerIdx = i;
+      kwCol = kIdx;
+      const vIdx = cols.findIndex(c => c.includes("tìm kiếm") || c.includes("searches") || c.includes("volume"));
+      if (vIdx !== -1) volCol = vIdx;
+      const cIdx = cols.findIndex(c => c.includes("cạnh tranh") || c.includes("competition"));
+      if (cIdx !== -1) compCol = cIdx;
+      const lIdx = cols.findIndex(c => c.includes("mức giá thấp") || c.includes("low range"));
+      if (lIdx !== -1) lowBidCol = lIdx;
+      const hIdx = cols.findIndex(c => c.includes("mức giá cao") || c.includes("high range"));
+      if (hIdx !== -1) highBidCol = hIdx;
+      break;
+    }
+  }
+
+  const startLine = headerIdx >= 0 ? headerIdx + 1 : 0;
+  const seen = new Set<string>();
+
+  for (let i = startLine; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith("#") || line.toLowerCase().includes("bản quyền") || line.toLowerCase().includes("tổng cộng")) continue;
+    const cols = line.split(sep).map(c => c.trim().replace(/^["']|["']$/g, ""));
+    if (cols.length <= kwCol) continue;
+
+    const text = cols[kwCol];
+    if (!text || text === "-" || text.toLowerCase() === "từ khóa bạn cung cấp" || text.toLowerCase() === "ý tưởng từ khóa") continue;
+    if (seen.has(text.toLowerCase())) continue;
+    seen.add(text.toLowerCase());
+
+    // Parse volume
+    let volStr = cols[volCol] || "0";
+    let avgMonthlySearches = cleanNumber(volStr);
+    if (volStr.toLowerCase().includes("k")) {
+      avgMonthlySearches = cleanNumber(volStr.replace(/k/gi, "")) * 1000;
+    }
+
+    // Parse competition
+    const compRaw = (cols[compCol] || "").toLowerCase();
+    let competition: "LOW" | "MEDIUM" | "HIGH" | "UNSPECIFIED" = "UNSPECIFIED";
+    let compIndex = 50;
+    if (compRaw.includes("thấp") || compRaw.includes("low")) {
+      competition = "LOW";
+      compIndex = 20;
+    } else if (compRaw.includes("cao") || compRaw.includes("high")) {
+      competition = "HIGH";
+      compIndex = 80;
+    } else if (compRaw.includes("trung bình") || compRaw.includes("medium")) {
+      competition = "MEDIUM";
+      compIndex = 50;
+    }
+
+    // Parse bids
+    const lowBid = cleanNumber(cols[lowBidCol] || "0");
+    const highBid = cleanNumber(cols[highBidCol] || "0");
+
+    result.push({
+      text,
+      avgMonthlySearches,
+      competition,
+      competitionIndex: compIndex,
+      lowBidMicros: lowBid > 0 ? lowBid * 1000000 : undefined,
+      highBidMicros: highBid > 0 ? highBid * 1000000 : undefined
+    });
+  }
+
+  return result;
+}

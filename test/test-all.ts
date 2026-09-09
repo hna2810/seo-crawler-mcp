@@ -963,6 +963,38 @@ assert(dateExtCsv.includes("2024-03-05 14:20"), "External CSV row must contain m
   const kwHeaderValues = kwSheet.getRow(4).values as any[];
   assert(kwHeaderValues[2] === "Từ Khóa", "Column 2 must be 'Từ Khóa'");
 
+  // 17. TEST GOOGLE KEYWORD PLANNER EXACT PARSER & IMPORT
+  console.log("\n--- 17. Testing Google Keyword Planner Exact Parser & Direct Import ---");
+  const { parseGoogleKeywordPlannerData } = require("../src/keywords/googleAdsService");
+
+  const samplePlannerPasted = `Từ khóa	Số lần tìm kiếm tr.bình hàng tháng	Thay đổi trong ba tháng	Thay đổi so với cùng kỳ năm trước	Cạnh tranh	Tỷ lệ hiển thị quảng cáo	Giá thầu đầu trang (phạm vi mức giá thấp)	Giá thầu đầu trang (phạm vi mức giá cao)
+quá trình phát triển của thai nhi	590	-19%	-19%	Thấp	-	112 đ	273 đ
+quá trình hình thành thai nhi	390	-18%	-33%	Thấp	-	106 đ	296 đ
+sự phát triển của thai nhi	320	-34%	-46%	Thấp	-	95 đ	240 đ
+sự phát triển của thai nhi qua từng tuần	90	-29%	-64%	Thấp	-	34 đ	380 đ`;
+
+  const parsedPlannerIdeas = parseGoogleKeywordPlannerData(samplePlannerPasted);
+  assert(parsedPlannerIdeas.length === 4, "Must parse exactly 4 keywords from pasted planner text");
+
+  const thaiNhiRaw = parsedPlannerIdeas.find((k: any) => k.text === "sự phát triển của thai nhi");
+  assert(Boolean(thaiNhiRaw), "Keyword 'sự phát triển của thai nhi' must exist");
+  assert(thaiNhiRaw?.avgMonthlySearches === 320, "Exact search volume must be 320");
+  assert(thaiNhiRaw?.competition === "LOW", "Exact competition must be LOW (Thấp)");
+  assert(thaiNhiRaw?.lowBidMicros === 95000000, "Low bid must be 95 VND");
+  assert(thaiNhiRaw?.highBidMicros === 240000000, "High bid must be 240 VND");
+
+  // Filter and Rank with Content Gap
+  const mockThaiNhiGaps = [
+    { topic: "MẸ BẦU / THAI KỲ", subtopicsWithZeroArticles: ["Sự phát triển của thai nhi"] }
+  ];
+  const rankedPlanner = filterAndRankKeywords(parsedPlannerIdeas, mockThaiNhiGaps, 10);
+  const thaiNhiRanked = rankedPlanner.find((k: any) => k.keyword === "sự phát triển của thai nhi");
+  assert(thaiNhiRanked?.avgMonthlySearches === 320, "Ranked keyword volume must preserve exact 320");
+  assert(thaiNhiRanked?.competition === "Thấp", "Ranked keyword competition must be 'Thấp'");
+  assert(thaiNhiRanked?.estimatedCpcRange === "95 - 240 đ", "Ranked keyword CPC range must be '95 - 240 đ'");
+  assert(thaiNhiRanked?.isContentGap === true, "Must match content gap for 'Sự phát triển của thai nhi'");
+  assert(thaiNhiRanked?.priority === "Ưu tiên cao (Viết ngay)", "Content gap keyword must be marked 'Ưu tiên cao (Viết ngay)'");
+
   console.log(`\n=========================================`);
   console.log(`TESTS FINISHED: ${passed}/${total} PASSED`);
   console.log(`=========================================`);
